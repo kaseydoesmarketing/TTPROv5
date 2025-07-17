@@ -1,10 +1,13 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './components/LoginPage';
+import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
+import { useState } from 'react';
 import './App.css';
 
 function AppContent() {
   const { currentUser, loading } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
 
   if (loading) {
     return (
@@ -14,7 +17,15 @@ function AppContent() {
     );
   }
 
-  return currentUser ? <Dashboard /> : <LoginPage />;
+  if (currentUser) {
+    return <Dashboard />;
+  }
+
+  if (showLogin) {
+    return <LoginPage />;
+  }
+
+  return <LandingPage onGetStarted={() => setShowLogin(true)} />;
 }
 
 function App() {
