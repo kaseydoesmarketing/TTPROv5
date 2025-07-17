@@ -1,7 +1,7 @@
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { CheckCircle, Play, BarChart3, Clock, Users, Zap } from 'lucide-react';
+import { CheckCircle, Play, BarChart3, Clock, Zap } from 'lucide-react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
