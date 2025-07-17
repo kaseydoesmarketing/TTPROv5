@@ -1,22 +1,17 @@
-console.log("Using mock Firebase auth for development");
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
-export const auth = {
-  currentUser: null,
-  onAuthStateChanged: (callback: (user: any) => void) => {
-    setTimeout(() => callback(null), 100);
-    return () => {}; // unsubscribe function
-  },
-  signInWithPopup: async () => {
-    throw new Error("Mock auth - use development login");
-  },
-  signOut: async () => {
-    console.log("Mock sign out");
-  }
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 
-const app = {
-  name: 'mock-app',
-  options: {}
-};
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+googleProvider.addScope('profile');
+googleProvider.addScope('email');
 
 export default app;

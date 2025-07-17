@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../lib/firebase';
+import { signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 
 interface User {
   uid: string;
@@ -37,35 +38,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signInWithGoogle = async () => {
     try {
-      console.log("Development mode: Using mock authentication");
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const credential = GoogleAuthProvider.credentialFromResult(result);
       
-      const mockUser = {
-        uid: 'dev-user-123',
-        email: 'dev@example.com',
-        displayName: 'Dev User',
-        photoURL: 'https://via.placeholder.com/150',
-        getIdToken: async () => 'mock-dev-token'
+      const accessToken = credential?.accessToken;
+      
+      const firebaseUser = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        getIdToken: () => user.getIdToken()
       };
       
-      setCurrentUser(mockUser as User);
-      await registerUserWithBackend(mockUser as User);
-      return;
-    } catch (error) {
-      console.error('Error in mock sign in:', error);
-      const mockUser = {
-        uid: 'dev-user-123',
-        email: 'dev@example.com',
-        displayName: 'Dev User',
-        photoURL: 'https://via.placeholder.com/150',
-        getIdToken: async () => 'mock-dev-token'
-      };
-      setCurrentUser(mockUser as User);
+      console.log('User authenticated:', user);
+      console.log('Access token:', accessToken);
+      
+      setCurrentUser(firebaseUser as User);
+      await registerUserWithBackend(firebaseUser as User);
+    } catch (error: any) {
+      console.error('Error signing in with Google:', error);
+      
+      if (error.code === 'auth/configuration-not-found' || error.code === 'auth/invalid-api-key') {
+        alert('Firebase configuration is not set up. Please configure Firebase credentials in the environment variables.');
+      }
+      
+      throw error;
     }
   };
 
   const logout = async () => {
     try {
-      console.log("Mock logout");
+      await firebaseSignOut(auth);
       setCurrentUser(null);
     } catch (error) {
       console.error('Error signing out:', error);
@@ -74,14 +79,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const getAuthToken = async (): Promise<string | null> => {
-    if (!currentUser) return null;
+    if (!currentUser || !currentUser.getIdToken) return null;
     
-    return 'mock-dev-token';
+    return await currentUser.getIdToken();
   };
 
-  const registerUserWithBackend = async (_user: User) => {
+  const registerUserWithBackend = async (user: User) => {
     try {
-      const token = 'mock-dev-token';
+      const token = await user.getIdToken?.();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       
       const response = await fetch(`${apiUrl}/auth/register`, {
@@ -104,8 +109,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setCurrentUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const firebaseUser = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          getIdToken: () => user.getIdToken()
+        };
+        setCurrentUser(firebaseUser as User);
+      } else {
+        setCurrentUser(null);
+      }
       setLoading(false);
     });
     return unsubscribe;
