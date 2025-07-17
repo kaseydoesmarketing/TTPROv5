@@ -50,7 +50,7 @@ class CreateABTestRequest(BaseModel):
 
 
 class ABTestResponse(BaseModel):
-    id: int
+    id: str
     video_id: str
     video_title: str
     title_variants: List[str]
@@ -64,7 +64,7 @@ class ABTestResponse(BaseModel):
 
 
 class TitleRotationResponse(BaseModel):
-    id: int
+    id: str
     variant_index: int
     title: str
     started_at: datetime
@@ -175,7 +175,7 @@ async def get_user_ab_tests(
 
 @router.get("/{test_id}", response_model=ABTestResponse)
 async def get_ab_test(
-    test_id: int,
+    test_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -208,7 +208,7 @@ async def get_ab_test(
 
 @router.post("/{test_id}/start")
 async def start_ab_test(
-    test_id: int,
+    test_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     youtube_client: YouTubeAPIClient = Depends(get_youtube_client)
@@ -269,7 +269,7 @@ async def start_ab_test(
 
 @router.post("/{test_id}/stop")
 async def stop_ab_test(
-    test_id: int,
+    test_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -314,7 +314,7 @@ async def stop_ab_test(
 
 @router.get("/{test_id}/rotations", response_model=List[TitleRotationResponse])
 async def get_test_rotations(
-    test_id: int,
+    test_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -351,7 +351,7 @@ async def get_test_rotations(
 
 @router.delete("/{test_id}")
 async def delete_ab_test(
-    test_id: int,
+    test_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
