@@ -17,10 +17,12 @@ console.log('Firebase Config Debug:', {
   apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
   authDomain: firebaseConfig.authDomain || 'MISSING',
   projectId: firebaseConfig.projectId || 'MISSING',
+  databaseURL: firebaseConfig.databaseURL || 'MISSING',
   hasAllRequiredFields: !!(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId)
 });
 
 console.log('Environment variable check - VITE_FIREBASE_API_KEY exists:', !!import.meta.env.VITE_FIREBASE_API_KEY);
+console.log('Database URL from env:', import.meta.env.VITE_FIREBASE_DATABASE_URL);
 
 const requiredFields = ['apiKey', 'authDomain', 'projectId'] as const;
 const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
