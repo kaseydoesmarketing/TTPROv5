@@ -59,9 +59,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await registerUserWithBackend(firebaseUser as User);
     } catch (error: any) {
       console.error('Error signing in with Google:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
       if (error.code === 'auth/configuration-not-found' || error.code === 'auth/invalid-api-key') {
-        alert('Firebase configuration is not set up. Please configure Firebase credentials in the environment variables.');
+        alert(`Firebase configuration error: ${error.message}. Please check environment variables.`);
+      } else if (error.code === 'auth/api-key-not-valid') {
+        alert('Firebase API key is invalid. Please verify the API key in environment variables.');
       }
       
       throw error;

@@ -13,6 +13,20 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+console.log('Firebase Config Debug:', {
+  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
+  authDomain: firebaseConfig.authDomain || 'MISSING',
+  projectId: firebaseConfig.projectId || 'MISSING',
+  hasAllRequiredFields: !!(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId)
+});
+
+const requiredFields = ['apiKey', 'authDomain', 'projectId'] as const;
+const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
+if (missingFields.length > 0) {
+  console.error('Missing required Firebase config fields:', missingFields);
+  throw new Error(`Missing required Firebase configuration: ${missingFields.join(', ')}`);
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const realtimeDB = getDatabase(app);
