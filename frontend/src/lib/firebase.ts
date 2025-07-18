@@ -20,6 +20,8 @@ console.log('Firebase Config Debug:', {
   hasAllRequiredFields: !!(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId)
 });
 
+console.log('Environment variable check - VITE_FIREBASE_API_KEY exists:', !!import.meta.env.VITE_FIREBASE_API_KEY);
+
 const requiredFields = ['apiKey', 'authDomain', 'projectId'] as const;
 const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
 if (missingFields.length > 0) {
