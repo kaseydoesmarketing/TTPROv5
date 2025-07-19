@@ -1,12 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { 
-  signInWithRedirect, 
-  getRedirectResult,
+  signInWithPopup, 
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
   GoogleAuthProvider,
-  User as FirebaseUser,
-  AuthError
+  User as FirebaseUser
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
@@ -19,9 +17,10 @@ interface User {
   accessToken?: string;
   refreshToken?: string;
   tokenExpirationTime?: number;
+  getIdToken?: (forceRefresh?: boolean) => Promise<string>;
 }
 
-interface AuthError {
+interface CustomAuthError {
   code: string;
   message: string;
   details?: string;
@@ -30,7 +29,7 @@ interface AuthError {
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
-  authError: AuthError | null;
+  authError: CustomAuthError | null;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   getAuthToken: (forceRefresh?: boolean) => Promise<string | null>;
@@ -57,14 +56,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export function AuthProvider({ children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [authError, setAuthError] = useState<CustomAuthError | null>(null);
 
   const clearAuthError = useCallback(() => {
     setAuthError(null);
   }, []);
 
   const handleAuthError = useCallback((error: any, context: string) => {
-    let authError: AuthError;
+    let authError: CustomAuthError;
 
     if (error?.code) {
       switch (error.code) {
@@ -139,43 +138,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       emailVerified: firebaseUser.emailVerified,
       accessToken: accessToken,
       refreshToken: firebaseUser.refreshToken,
-      tokenExpirationTime: idTokenResult.expirationTime ? new Date(idTokenResult.expirationTime).getTime() : undefined
+      tokenExpirationTime: idTokenResult.expirationTime ? new Date(idTokenResult.expirationTime).getTime() : undefined,
+      getIdToken: (forceRefresh?: boolean) => firebaseUser.getIdToken(forceRefresh)
     };
   }, []);
-
-  const signInWithGoogle = useCallback(async () => {
-    try {
-      setLoading(true);
-      setAuthError(null);
-      
-      await signInWithRedirect(auth, googleProvider);
-      
-    } catch (error: any) {
-      setLoading(false);
-      const authError = handleAuthError(error, 'Google sign-in');
-      throw authError;
-    }
-  }, [handleAuthError]);
-
-  const logout = useCallback(async () => {
-    try {
-      setLoading(true);
-      setAuthError(null);
-      
-      if (currentUser) {
-        await revokeUserTokens(currentUser.uid);
-      }
-      
-      await firebaseSignOut(auth);
-      setCurrentUser(null);
-      
-    } catch (error: any) {
-      const authError = handleAuthError(error, 'Sign out');
-      throw authError;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser, handleAuthError]);
 
   const getAuthToken = useCallback(async (forceRefresh: boolean = false): Promise<string | null> => {
     if (!auth.currentUser) {
@@ -234,7 +200,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [getAuthToken, handleAuthError]);
 
-  const revokeUserTokens = useCallback(async (uid: string): Promise<void> => {
+  const revokeUserTokens = useCallback(async (): Promise<void> => {
     try {
       const token = await getAuthToken();
       if (!token) return;
@@ -250,28 +216,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [getAuthToken]);
 
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          const accessToken = credential?.accessToken;
-          
-          const user = await createUserFromFirebaseUser(result.user, accessToken);
-          setCurrentUser(user);
-          
-          await registerUserWithBackend(user);
-        }
-      } catch (error: any) {
-        handleAuthError(error, 'Authentication redirect');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      setLoading(true);
+      setAuthError(null);
+      
+      const result = await signInWithPopup(auth, googleProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const accessToken = credential?.accessToken;
+      
+      const user = await createUserFromFirebaseUser(result.user, accessToken);
+      setCurrentUser(user);
+      
+      await registerUserWithBackend(user);
+      
+    } catch (error: any) {
+      setLoading(false);
+      const authError = handleAuthError(error, 'Google sign-in');
+      throw authError;
+    } finally {
+      setLoading(false);
+    }
+  }, [handleAuthError, createUserFromFirebaseUser, registerUserWithBackend]);
 
-    handleRedirectResult();
-  }, [createUserFromFirebaseUser, registerUserWithBackend, handleAuthError]);
+  const logout = useCallback(async () => {
+    try {
+      setLoading(true);
+      setAuthError(null);
+      
+      if (currentUser) {
+        await revokeUserTokens();
+      }
+      
+      await firebaseSignOut(auth);
+      setCurrentUser(null);
+      
+    } catch (error: any) {
+      const authError = handleAuthError(error, 'Sign out');
+      throw authError;
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, handleAuthError, revokeUserTokens]);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {

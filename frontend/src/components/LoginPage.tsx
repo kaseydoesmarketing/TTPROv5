@@ -94,7 +94,7 @@ export function LoginPage() {
           <div className="text-xs text-gray-500 text-center">
             By signing in, you agree to our Terms of Service and Privacy Policy.
             <br />
-            We'll redirect you to Google for secure authentication.
+            We'll open a secure Google authentication popup.
           </div>
         </CardContent>
       </Card>
