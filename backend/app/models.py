@@ -3,6 +3,15 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 import uuid
+from datetime import datetime, timedelta
+from cryptography.fernet import Fernet
+from .config import settings
+import base64
+import hashlib
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class User(Base):
@@ -26,6 +35,117 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     
     ab_tests = relationship("ABTest", back_populates="user")
+    
+    @staticmethod
+    def _get_encryption_key() -> bytes:
+        """Generate encryption key from secret key"""
+        key_material = settings.secret_key.encode()
+        digest = hashlib.sha256(key_material).digest()
+        return base64.urlsafe_b64encode(digest)
+    
+    @classmethod
+    def _encrypt_token(cls, token: Optional[str]) -> Optional[str]:
+        """Encrypt a token for secure storage"""
+        if not token:
+            return None
+        
+        try:
+            fernet = Fernet(cls._get_encryption_key())
+            encrypted_token = fernet.encrypt(token.encode())
+            return base64.urlsafe_b64encode(encrypted_token).decode()
+        except Exception as e:
+            logger.error(f"Token encryption failed: {e}")
+            raise ValueError("Failed to encrypt token")
+    
+    @classmethod
+    def _decrypt_token(cls, encrypted_token: Optional[str]) -> Optional[str]:
+        """Decrypt a token for use"""
+        if not encrypted_token:
+            return None
+        
+        try:
+            fernet = Fernet(cls._get_encryption_key())
+            decoded_token = base64.urlsafe_b64decode(encrypted_token.encode())
+            decrypted_token = fernet.decrypt(decoded_token)
+            return decrypted_token.decode()
+        except Exception as e:
+            logger.error(f"Token decryption failed: {e}")
+            return None
+    
+    def set_google_tokens(self, access_token: Optional[str], refresh_token: Optional[str] = None, expires_in: int = 3600):
+        """Set encrypted Google OAuth tokens with expiration"""
+        try:
+            if access_token:
+                self.google_access_token = self._encrypt_token(access_token)
+            
+            if refresh_token:
+                self.google_refresh_token = self._encrypt_token(refresh_token)
+            
+            self.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            self.updated_at = datetime.utcnow()
+            
+            logger.info(f"Updated OAuth tokens for user {self.id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to set Google tokens for user {self.id}: {e}")
+            raise ValueError("Failed to store authentication tokens")
+    
+    def get_google_access_token(self) -> Optional[str]:
+        """Get decrypted Google access token"""
+        return self._decrypt_token(self.google_access_token)
+    
+    def get_google_refresh_token(self) -> Optional[str]:
+        """Get decrypted Google refresh token"""
+        return self._decrypt_token(self.google_refresh_token)
+    
+    def is_token_expired(self) -> bool:
+        """Check if the access token is expired or will expire soon"""
+        if not self.token_expires_at:
+            return True
+        
+        buffer_time = timedelta(minutes=5)
+        return datetime.utcnow() + buffer_time >= self.token_expires_at
+    
+    def clear_google_tokens(self):
+        """Clear all Google OAuth tokens"""
+        self.google_access_token = None
+        self.google_refresh_token = None
+        self.token_expires_at = None
+        self.updated_at = datetime.utcnow()
+        
+        logger.info(f"Cleared OAuth tokens for user {self.id}")
+    
+    def has_valid_tokens(self) -> bool:
+        """Check if user has valid, non-expired tokens"""
+        return (
+            self.google_access_token is not None and 
+            self.google_refresh_token is not None and 
+            not self.is_token_expired()
+        )
+    
+    def needs_token_refresh(self) -> bool:
+        """Check if tokens need to be refreshed"""
+        return (
+            self.google_refresh_token is not None and 
+            (self.google_access_token is None or self.is_token_expired())
+        )
+    
+    def to_dict(self) -> dict:
+        """Convert user to dictionary (excluding sensitive data)"""
+        return {
+            "id": self.id,
+            "firebase_uid": self.firebase_uid,
+            "email": self.email,
+            "display_name": self.display_name,
+            "photo_url": self.photo_url,
+            "youtube_channel_id": self.youtube_channel_id,
+            "youtube_channel_title": self.youtube_channel_title,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "is_active": self.is_active,
+            "has_valid_tokens": self.has_valid_tokens(),
+            "token_expires_at": self.token_expires_at.isoformat() if self.token_expires_at else None
+        }
 
 
 class ABTest(Base):
