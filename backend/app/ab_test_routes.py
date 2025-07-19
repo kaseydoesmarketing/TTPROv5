@@ -21,24 +21,49 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Get current authenticated user from Firebase token"""
+    """Get current authenticated user from Firebase token - production only, no fallbacks"""
     try:
+        if not credentials or not credentials.credentials:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication token is required"
+            )
+        
         decoded_token = verify_firebase_token(credentials.credentials)
         firebase_uid = decoded_token["uid"]
+        email = decoded_token.get("email")
+        
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User email is required"
+            )
         
         user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         
         if not user:
+            logger.warning(f"User not found in database for Firebase UID: {firebase_uid}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                detail="User not found. Please complete registration first."
             )
         
+        logger.debug(f"Authenticated user {user.id} ({user.email})")
         return user
+        
+    except HTTPException:
+        raise
     except ValueError as e:
+        logger.error(f"Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
+            detail="Invalid or expired authentication token"
+        )
+    except Exception as e:
+        logger.error(f"Authentication failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication failed"
         )
 
 
@@ -229,10 +254,16 @@ async def start_ab_test(
     try:
         first_title = test.title_variants[0]
         
+        if not current_user.google_access_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="YouTube access token not available. Please re-authenticate with Google."
+            )
+        
         success = await youtube_client.update_video_title(
             test.video_id,
             first_title,
-            "mock_access_token"  # In real implementation, get from user's stored tokens
+            current_user.google_access_token
         )
         
         if not success:

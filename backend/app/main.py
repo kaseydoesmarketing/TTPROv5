@@ -2,6 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
 from .config import settings
 from .database import get_db
 from .firebase_auth import verify_firebase_token
@@ -51,49 +54,119 @@ async def healthz():
     return {"status": "ok"}
 
 
+class UserRegistrationRequest(BaseModel):
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+
+
 @app.post("/auth/register")
 def register_user(
+    request: UserRegistrationRequest,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Register a new user after Firebase authentication"""
+    """Register a new user after Firebase authentication with OAuth tokens"""
     try:
         decoded_token = verify_firebase_token(credentials.credentials)
         firebase_uid = decoded_token["uid"]
         email = decoded_token.get("email")
         display_name = decoded_token.get("name")
         photo_url = decoded_token.get("picture")
+        email_verified = decoded_token.get("email_verified", False)
+        
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User email is required"
+            )
+        
+        if not email_verified:
+            logger.warning(f"User {firebase_uid} has unverified email: {email}")
         
         existing_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         
         if existing_user:
-            return {"message": "User already registered", "user_id": existing_user.id}
+            if request.access_token:
+                existing_user.google_access_token = request.access_token
+            if request.refresh_token:
+                existing_user.google_refresh_token = request.refresh_token
+            existing_user.updated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(existing_user)
+            
+            return {
+                "message": "User tokens updated successfully",
+                "user_id": existing_user.id,
+                "email_verified": email_verified
+            }
         
         new_user = User(
             firebase_uid=firebase_uid,
             email=email,
             display_name=display_name,
-            photo_url=photo_url
+            photo_url=photo_url,
+            google_access_token=request.access_token,
+            google_refresh_token=request.refresh_token
         )
         
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
         
+        logger.info(f"Registered new user {new_user.id} with Firebase UID {firebase_uid}")
+        
         return {
             "message": "User registered successfully",
-            "user_id": new_user.id
+            "user_id": new_user.id,
+            "email_verified": email_verified
         }
         
     except ValueError as e:
+        logger.error(f"Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
+            detail="Invalid authentication token"
         )
     except Exception as e:
+        logger.error(f"Registration failed for token: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Registration failed: {str(e)}"
+            detail="Registration failed. Please try again."
+        )
+
+
+@app.post("/auth/revoke")
+def revoke_user_tokens(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Revoke user tokens on logout"""
+    try:
+        decoded_token = verify_firebase_token(credentials.credentials)
+        firebase_uid = decoded_token["uid"]
+        
+        user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
+        if user:
+            user.google_access_token = None
+            user.google_refresh_token = None
+            user.updated_at = datetime.utcnow()
+            db.commit()
+            
+            logger.info(f"Revoked tokens for user {user.id}")
+        
+        return {"message": "Tokens revoked successfully"}
+        
+    except ValueError as e:
+        logger.error(f"Token verification failed during revocation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    except Exception as e:
+        logger.error(f"Token revocation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Token revocation failed"
         )
 
 

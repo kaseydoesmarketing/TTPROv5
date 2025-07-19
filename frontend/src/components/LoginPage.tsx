@@ -1,15 +1,21 @@
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { useState } from 'react';
 
 export function LoginPage() {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, authError, loading, clearAuthError } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
+      setIsSigningIn(true);
+      clearAuthError();
       await signInWithGoogle();
     } catch (error) {
       console.error('Failed to sign in:', error);
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -26,10 +32,44 @@ export function LoginPage() {
           <div className="text-center text-sm text-gray-600">
             Sign in with your Google account to get started
           </div>
+          
+          {authError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    Authentication Failed
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    <p>{authError.message}</p>
+                    {authError.details && (
+                      <p className="mt-1 text-xs text-red-600">{authError.details}</p>
+                    )}
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-red-800 hover:text-red-900"
+                      onClick={clearAuthError}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <Button 
             onClick={handleGoogleSignIn}
             className="w-full"
             size="lg"
+            disabled={loading || isSigningIn}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -49,10 +89,12 @@ export function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            {isSigningIn || loading ? 'Signing in...' : 'Continue with Google'}
           </Button>
           <div className="text-xs text-gray-500 text-center">
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            By signing in, you agree to our Terms of Service and Privacy Policy.
+            <br />
+            We'll redirect you to Google for secure authentication.
           </div>
         </CardContent>
       </Card>

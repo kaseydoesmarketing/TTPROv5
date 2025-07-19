@@ -28,7 +28,17 @@ export function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const token = await currentUser?.getIdToken?.() || 'mock-dev-token';
+      if (!currentUser) {
+        console.error('No authenticated user available for API request');
+        return;
+      }
+
+      const token = await currentUser.getIdToken?.();
+      if (!token) {
+        console.error('Failed to get authentication token');
+        return;
+      }
+
       const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${apiUrl}/api/ab-tests/`, {
