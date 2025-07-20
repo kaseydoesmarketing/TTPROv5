@@ -65,6 +65,13 @@ class FirebaseService {
       measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
     };
 
+    console.log('Firebase config being used:', {
+      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
+      authDomain: firebaseConfig.authDomain,
+      projectId: firebaseConfig.projectId,
+      hasOtherFields: !!(firebaseConfig.databaseURL && firebaseConfig.appId)
+    });
+
     try {
       this.validateConfig(firebaseConfig);
       this.app = initializeApp(firebaseConfig);
