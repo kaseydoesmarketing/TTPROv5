@@ -54,6 +54,19 @@ class FirebaseService {
       return this.app;
     }
 
+    if (import.meta.env.DEV) {
+      console.log('Initializing Firebase with environment variables:', {
+        VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ? '***configured***' : 'MISSING',
+        VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'MISSING',
+        VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'MISSING',
+        VITE_FIREBASE_DATABASE_URL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 'MISSING',
+        VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'MISSING',
+        VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 'MISSING',
+        VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID || 'MISSING',
+        VITE_FIREBASE_MEASUREMENT_ID: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'MISSING'
+      });
+    }
+
     const firebaseConfig: FirebaseConfig = {
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
