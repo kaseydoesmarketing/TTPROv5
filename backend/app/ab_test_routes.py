@@ -254,7 +254,8 @@ async def start_ab_test(
     try:
         first_title = test.title_variants[0]
         
-        if not current_user.google_access_token:
+        access_token = current_user.get_google_access_token()
+        if not access_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="YouTube access token not available. Please re-authenticate with Google."
@@ -263,7 +264,7 @@ async def start_ab_test(
         success = await youtube_client.update_video_title(
             test.video_id,
             first_title,
-            current_user.google_access_token
+            access_token
         )
         
         if not success:
@@ -378,6 +379,39 @@ async def get_test_rotations(
         )
         for rotation in rotations
     ]
+
+
+@router.get("/channel/videos")
+async def get_channel_videos(
+    max_results: int = 50,
+    current_user: User = Depends(get_current_user),
+    youtube_client: YouTubeAPIClient = Depends(get_youtube_client)
+):
+    """Get videos from the user's YouTube channel"""
+    try:
+        access_token = current_user.get_google_access_token()
+        if not access_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="YouTube access token not available. Please re-authenticate with Google."
+            )
+        
+        channel_info = await youtube_client.get_channel_info(access_token)
+        channel_id = channel_info["id"]
+        
+        videos = await youtube_client.get_channel_videos(channel_id, max_results)
+        
+        return {
+            "channel": channel_info,
+            "videos": videos
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching channel videos: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch channel videos"
+        )
 
 
 @router.delete("/{test_id}")
