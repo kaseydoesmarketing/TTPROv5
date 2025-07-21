@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { VideoSelector } from './VideoSelector';
+import { DateTimePicker } from './DateTimePicker';
 
 interface CreateTestModalProps {
   isOpen: boolean;
@@ -11,8 +13,10 @@ export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestMo
   const { getAuthToken } = useAuth();
   const [formData, setFormData] = useState({
     videoId: '',
+    videoTitle: '',
     titleVariants: ['', ''],
-    testDurationHours: 24,
+    startTime: undefined as Date | undefined,
+    endTime: undefined as Date | undefined,
     rotationIntervalHours: 4
   });
   const [loading, setLoading] = useState(false);
@@ -64,8 +68,12 @@ export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestMo
         body: JSON.stringify({
           video_id: formData.videoId,
           title_variants: formData.titleVariants.filter(variant => variant.trim() !== ''),
-          test_duration_hours: formData.testDurationHours,
-          rotation_interval_hours: formData.rotationIntervalHours
+          test_duration_hours: formData.startTime && formData.endTime 
+            ? Math.ceil((formData.endTime.getTime() - formData.startTime.getTime()) / (1000 * 60 * 60))
+            : 24,
+          rotation_interval_hours: formData.rotationIntervalHours,
+          start_time: formData.startTime?.toISOString(),
+          end_time: formData.endTime?.toISOString()
         }),
       });
 
@@ -78,8 +86,10 @@ export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestMo
       onClose();
       setFormData({
         videoId: '',
+        videoTitle: '',
         titleVariants: ['', ''],
-        testDurationHours: 24,
+        startTime: undefined,
+        endTime: undefined,
         rotationIntervalHours: 4
       });
     } catch (err) {
@@ -105,22 +115,12 @@ export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestMo
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              YouTube Video ID
-            </label>
-            <input
-              type="text"
-              value={formData.videoId}
-              onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
-              placeholder="e.g., dQw4w9WgXcQ"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Find this in your YouTube video URL: youtube.com/watch?v=VIDEO_ID
-            </p>
-          </div>
+          <VideoSelector
+            selectedVideoId={formData.videoId}
+            onVideoSelect={(videoId, videoTitle) => {
+              setFormData({ ...formData, videoId, videoTitle });
+            }}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -159,35 +159,45 @@ export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestMo
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Test Duration (hours)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="168"
-                value={formData.testDurationHours}
-                onChange={(e) => setFormData({ ...formData, testDurationHours: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Rotation Interval (hours)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="24"
-                value={formData.rotationIntervalHours}
-                onChange={(e) => setFormData({ ...formData, rotationIntervalHours: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
+            <DateTimePicker
+              label="Start Time"
+              value={formData.startTime}
+              onChange={(date) => setFormData({ ...formData, startTime: date })}
+              minDate={new Date()}
+            />
+            <DateTimePicker
+              label="End Time"
+              value={formData.endTime}
+              onChange={(date) => setFormData({ ...formData, endTime: date })}
+              minDate={formData.startTime || new Date()}
+            />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Rotation Interval (hours)
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="24"
+              value={formData.rotationIntervalHours}
+              onChange={(e) => setFormData({ ...formData, rotationIntervalHours: parseInt(e.target.value) })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              How often to rotate between title variants during the test
+            </p>
+          </div>
+
+          {formData.startTime && formData.endTime && (
+            <div className="bg-blue-50 p-3 rounded-md">
+              <p className="text-sm text-blue-800">
+                <strong>Test Duration:</strong> {Math.ceil((formData.endTime.getTime() - formData.startTime.getTime()) / (1000 * 60 * 60))} hours
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="text-red-600 text-sm bg-red-50 p-2 rounded">

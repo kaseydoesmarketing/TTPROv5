@@ -86,11 +86,11 @@ def register_user(
         existing_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         
         if existing_user:
-            if request.access_token:
-                existing_user.google_access_token = request.access_token
-            if request.refresh_token:
-                existing_user.google_refresh_token = request.refresh_token
-            existing_user.updated_at = datetime.utcnow()
+            if request.access_token or request.refresh_token:
+                existing_user.set_google_tokens(
+                    access_token=request.access_token,
+                    refresh_token=request.refresh_token
+                )
             db.commit()
             db.refresh(existing_user)
             
@@ -104,10 +104,14 @@ def register_user(
             firebase_uid=firebase_uid,
             email=email,
             display_name=display_name,
-            photo_url=photo_url,
-            google_access_token=request.access_token,
-            google_refresh_token=request.refresh_token
+            photo_url=photo_url
         )
+        
+        if request.access_token or request.refresh_token:
+            new_user.set_google_tokens(
+                access_token=request.access_token,
+                refresh_token=request.refresh_token
+            )
         
         db.add(new_user)
         db.commit()
@@ -147,9 +151,7 @@ def revoke_user_tokens(
         
         user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         if user:
-            user.google_access_token = None
-            user.google_refresh_token = None
-            user.updated_at = datetime.utcnow()
+            user.clear_google_tokens()
             db.commit()
             
             logger.info(f"Revoked tokens for user {user.id}")
