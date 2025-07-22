@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from .database import get_db
 from .models import User
-from .channel_models import YouTubeChannel
+from .models import YouTubeChannel
 from .firebase_auth import verify_firebase_token
 from .youtube_api import get_youtube_client, YouTubeAPIClient
 from .tasks import update_quota_usage
