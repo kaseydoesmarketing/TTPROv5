@@ -92,4 +92,16 @@
 4. **Test End-to-End**: Verify full application functionality after both deployments are complete
 
 ## Checkpoint Status
+**Checkpoint Branch**: `devin/1737625536-deployment-checkpoint`
+
 Frontend deployment completed successfully. Backend deployment ready but blocked by billing requirements. All credentials extracted and documented for immediate deployment once billing is resolved.
+
+### Resume Instructions
+To resume from this checkpoint:
+1. Checkout branch: `git checkout devin/1737625536-deployment-checkpoint`
+2. Resolve Fly.io billing at: https://fly.io/dashboard/kaseydoesmarketing-gmail-com/billing
+3. Run: `flyctl apps create app-qsxbymys` (after billing is resolved)
+4. Set Fly.io secrets with extracted credentials
+5. Deploy backend: `flyctl deploy`
+6. Add Vercel domain to Firebase authorized domains
+7. Test end-to-end functionality
