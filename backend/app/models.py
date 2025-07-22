@@ -11,6 +11,8 @@ import hashlib
 import logging
 from typing import Optional
 
+from .channel_models import YouTubeChannel
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     
     ab_tests = relationship("ABTest", back_populates="user")
+    youtube_channels = relationship("YouTubeChannel", back_populates="user")
     
     @staticmethod
     def _get_encryption_key() -> bytes:

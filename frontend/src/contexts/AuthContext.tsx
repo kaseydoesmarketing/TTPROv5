@@ -62,36 +62,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setAuthError(null);
   }, []);
 
-  const handleAuthError = useCallback((error: any, context: string) => {
+  const handleAuthError = useCallback((error: unknown, context: string) => {
     let authError: CustomAuthError;
 
-    if (error?.code) {
-      switch (error.code) {
+    if (error && typeof error === 'object' && 'code' in error) {
+      switch ((error as { code: string }).code) {
         case 'auth/configuration-not-found':
         case 'auth/invalid-api-key':
           authError = {
-            code: error.code,
+            code: (error as { code: string }).code,
             message: 'Authentication configuration error. Please contact support.',
             details: 'Firebase configuration is invalid or missing'
           };
           break;
         case 'auth/network-request-failed':
           authError = {
-            code: error.code,
+            code: (error as { code: string }).code,
             message: 'Network error. Please check your internet connection and try again.',
             details: 'Unable to connect to authentication servers'
           };
           break;
         case 'auth/too-many-requests':
           authError = {
-            code: error.code,
+            code: (error as { code: string }).code,
             message: 'Too many failed attempts. Please try again later.',
             details: 'Rate limit exceeded for authentication requests'
           };
           break;
         case 'auth/user-disabled':
           authError = {
-            code: error.code,
+            code: (error as { code: string }).code,
             message: 'Your account has been disabled. Please contact support.',
             details: 'User account is disabled'
           };
@@ -99,23 +99,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
         case 'auth/popup-blocked':
         case 'auth/popup-closed-by-user':
           authError = {
-            code: error.code,
+            code: (error as { code: string }).code,
             message: 'Sign-in was cancelled. Please try again.',
             details: 'Authentication popup was blocked or closed'
           };
           break;
         default:
           authError = {
-            code: error.code,
+            code: (error as { code: string }).code,
             message: 'Authentication failed. Please try again.',
-            details: error.message
+            details: (error as { message?: string }).message || 'Unknown error'
           };
       }
     } else {
       authError = {
         code: 'unknown',
         message: `${context} failed. Please try again.`,
-        details: error?.message || 'Unknown error occurred'
+        details: (error && typeof error === 'object' && 'message' in error ? (error as { message: string }).message : null) || 'Unknown error occurred'
       };
     }
 
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       return token;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleAuthError(error, 'Token refresh');
       return null;
     }
@@ -194,7 +194,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(errorData.detail || `Registration failed with status ${response.status}`);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleAuthError(error, 'User registration');
       throw error;
     }
@@ -213,6 +213,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         },
       });
     } catch (error) {
+      console.debug('Token revocation failed during logout:', error);
     }
   }, [getAuthToken]);
 
@@ -230,11 +231,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       await registerUserWithBackend(user);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       const authError = handleAuthError(error, 'Google sign-in');
       throw authError;
-    } finally {
+    }finally {
       setLoading(false);
     }
   }, [handleAuthError, createUserFromFirebaseUser, registerUserWithBackend]);
@@ -251,16 +252,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await firebaseSignOut(auth);
       setCurrentUser(null);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       const authError = handleAuthError(error, 'Sign out');
       throw authError;
-    } finally {
+    }finally {
       setLoading(false);
     }
   }, [currentUser, handleAuthError, revokeUserTokens]);
 
 
   useEffect(() => {
+    if (import.meta.env.DEV && import.meta.env.VITE_FIREBASE_API_KEY?.startsWith('dev_')) {
+      const mockUser: User = {
+        uid: 'dev-user-123',
+        email: 'dev@example.com',
+        displayName: 'Development User',
+        photoURL: 'https://via.placeholder.com/40',
+        emailVerified: true,
+        accessToken: 'dev-access-token',
+        refreshToken: 'dev-refresh-token',
+        tokenExpirationTime: Date.now() + 3600000,
+        getIdToken: async () => 'dev-id-token'
+      };
+      setCurrentUser(mockUser);
+      setLoading(false);
+      return () => {};
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser && firebaseUser.email) {
@@ -269,7 +287,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else {
           setCurrentUser(null);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         handleAuthError(error, 'Authentication state change');
         setCurrentUser(null);
       } finally {

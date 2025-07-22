@@ -36,7 +36,7 @@ export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }
     
     try {
       const token = await getAuthToken();
-      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
       
       const response = await fetch(`${apiUrl}/api/ab-tests/channel/videos?max_results=50`, {
         headers: {

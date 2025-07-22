@@ -1,9 +1,11 @@
 from celery import current_app
 from sqlalchemy.orm import Session
 from .database import SessionLocal
-from .models import ABTest, TitleRotation, QuotaUsage
+from .models import ABTest, TitleRotation, QuotaUsage, User
+from .youtube_api import YouTubeAPIClient
 from datetime import datetime, timedelta
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -46,27 +48,101 @@ def rotate_titles():
 def _perform_title_rotation(db: Session, test: ABTest):
     """Perform the actual title rotation for a test"""
     try:
+        user = db.query(User).filter(User.id == test.user_id).first()
+        if not user:
+            logger.error(f"User not found for test {test.id}")
+            return
+            
+        access_token = user.get_google_access_token()
+        if not access_token:
+            logger.error(f"No access token for user {user.id}, skipping rotation")
+            return
+        
         current_rotation = db.query(TitleRotation).filter(
             TitleRotation.ab_test_id == test.id,
             TitleRotation.ended_at.is_(None)
         ).first()
         
+        youtube_client = YouTubeAPIClient()
+        
         if current_rotation:
-            current_rotation.ended_at = datetime.utcnow()
+            try:
+                start_date = current_rotation.started_at.strftime('%Y-%m-%d')
+                end_date = datetime.utcnow().strftime('%Y-%m-%d')
+                
+                video_analytics = asyncio.run(youtube_client.get_video_analytics(
+                    test.video_id, start_date, end_date, access_token
+                ))
+                
+                current_rotation.views_end = video_analytics.get('views', 0)
+                current_rotation.likes_end = video_analytics.get('likes', 0)
+                current_rotation.comments_end = video_analytics.get('comments', 0)
+                
+                if current_rotation.views_start is not None:
+                    current_rotation.views_gained = max(0, current_rotation.views_end - current_rotation.views_start)
+                
+                if current_rotation.views_end > 0 and current_rotation.likes_end is not None:
+                    current_rotation.engagement_rate = (current_rotation.likes_end / current_rotation.views_end) * 100
+                
+                current_rotation.ended_at = datetime.utcnow()
+                
+                update_quota_usage.delay(user.id, "video_analytics", 1)
+                
+            except Exception as e:
+                logger.error(f"Error fetching end metrics for rotation {current_rotation.id}: {str(e)}")
+                current_rotation.ended_at = datetime.utcnow()
             
         next_variant_index = (test.current_variant_index + 1) % len(test.title_variants)
+        new_title = test.title_variants[next_variant_index]
+        
+        try:
+            success = asyncio.run(youtube_client.update_video_title(
+                test.video_id, new_title, access_token
+            ))
+            
+            if not success:
+                logger.error(f"Failed to update video title for test {test.id}")
+                return
+                
+            update_quota_usage.delay(user.id, "videos_update", 50)
+            
+        except Exception as e:
+            logger.error(f"Error updating video title for test {test.id}: {str(e)}")
+            return
+        
         test.current_variant_index = next_variant_index
         
-        new_rotation = TitleRotation(
-            ab_test_id=test.id,
-            variant_index=next_variant_index,
-            title=test.title_variants[next_variant_index],
-            started_at=datetime.utcnow()
-        )
+        try:
+            current_date = datetime.utcnow().strftime('%Y-%m-%d')
+            
+            video_analytics = asyncio.run(youtube_client.get_video_analytics(
+                test.video_id, current_date, current_date, access_token
+            ))
+            
+            new_rotation = TitleRotation(
+                ab_test_id=test.id,
+                variant_index=next_variant_index,
+                title=new_title,
+                started_at=datetime.utcnow(),
+                views_start=video_analytics.get('views', 0),
+                likes_start=video_analytics.get('likes', 0),
+                comments_start=video_analytics.get('comments', 0)
+            )
+            
+            update_quota_usage.delay(user.id, "video_analytics", 1)
+            
+        except Exception as e:
+            logger.error(f"Error fetching start metrics for new rotation: {str(e)}")
+            new_rotation = TitleRotation(
+                ab_test_id=test.id,
+                variant_index=next_variant_index,
+                title=new_title,
+                started_at=datetime.utcnow()
+            )
         
         db.add(new_rotation)
         
-        logger.info(f"Rotated title for test {test.id} to variant {next_variant_index}")
+        logger.info(f"Rotated title for test {test.id} to variant {next_variant_index}: '{new_title}'")
         
     except Exception as e:
         logger.error(f"Error performing title rotation for test {test.id}: {str(e)}")

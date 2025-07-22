@@ -65,7 +65,7 @@ def initialize_firebase():
 
 def verify_firebase_token(id_token: str) -> Dict[str, Any]:
     """
-    Verify Firebase ID token and return user info - production only, no fallbacks
+    Verify Firebase ID token and return user info - with development bypass
     
     Args:
         id_token: Firebase ID token from client
@@ -79,6 +79,20 @@ def verify_firebase_token(id_token: str) -> Dict[str, Any]:
     """
     if not id_token or not id_token.strip():
         raise ValueError("ID token is required and cannot be empty")
+    
+    if settings.is_development and id_token == 'dev-id-token':
+        logger.info("Using development bypass for token verification")
+        return {
+            "uid": "dev-user-123",
+            "email": "dev@example.com",
+            "name": "Development User",
+            "picture": "https://via.placeholder.com/40",
+            "email_verified": True,
+            "provider_data": {},
+            "auth_time": 1640995200,
+            "iat": 1640995200,
+            "exp": 1640998800
+        }
     
     try:
         initialize_firebase()
