@@ -17,13 +17,13 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false
 
 # Install dependencies
-RUN poetry install --no-dev
+RUN poetry install --only=main
 
 # Copy application code
 COPY . .
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
 # Run the application
-CMD ["poetry", "run", "fastapi", "run", "app/main.py", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["poetry", "run", "fastapi", "run", "app/main.py", "--host", "0.0.0.0", "--port", "8080"]
