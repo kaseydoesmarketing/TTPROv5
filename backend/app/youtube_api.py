@@ -17,6 +17,20 @@ class YouTubeAPIClient:
     
     async def get_channel_info(self, access_token: str) -> Dict[str, Any]:
         """Get channel information for the authenticated user"""
+        from .config import settings
+        
+        if settings.is_development and access_token == "dev_access_token":
+            logger.info("Using development bypass for channel info")
+            return {
+                "id": "dev_channel_123",
+                "title": "Development Channel",
+                "description": "A development channel for testing TitleTesterPro",
+                "subscriber_count": 1000,
+                "video_count": 25,
+                "view_count": 50000,
+                "thumbnail_url": "https://via.placeholder.com/88x88"
+            }
+        
         try:
             credentials = Credentials(token=access_token)
             youtube = build('youtube', 'v3', credentials=credentials)
@@ -48,6 +62,46 @@ class YouTubeAPIClient:
     
     async def get_channel_videos(self, channel_id: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """Get videos from a channel"""
+        from .config import settings
+        
+        if settings.is_development and channel_id == "dev_channel_123":
+            logger.info("Using development bypass for channel videos")
+            return [
+                {
+                    "id": "dev_video_1",
+                    "title": "How to Optimize YouTube Titles for Maximum Views",
+                    "description": "Learn the secrets of creating compelling YouTube titles that drive engagement and views.",
+                    "published_at": "2024-01-15T10:00:00Z",
+                    "thumbnail_url": "https://via.placeholder.com/320x180",
+                    "view_count": 15420,
+                    "like_count": 892,
+                    "comment_count": 156,
+                    "duration": "PT8M32S"
+                },
+                {
+                    "id": "dev_video_2", 
+                    "title": "A/B Testing Your YouTube Content: Complete Guide",
+                    "description": "Master the art of A/B testing to improve your YouTube performance and grow your channel.",
+                    "published_at": "2024-01-10T14:30:00Z",
+                    "thumbnail_url": "https://via.placeholder.com/320x180",
+                    "view_count": 8765,
+                    "like_count": 543,
+                    "comment_count": 89,
+                    "duration": "PT12M15S"
+                },
+                {
+                    "id": "dev_video_3",
+                    "title": "YouTube Analytics Deep Dive: Understanding Your Metrics",
+                    "description": "Comprehensive guide to YouTube analytics and how to use data to grow your channel.",
+                    "published_at": "2024-01-05T09:15:00Z",
+                    "thumbnail_url": "https://via.placeholder.com/320x180",
+                    "view_count": 12340,
+                    "like_count": 678,
+                    "comment_count": 234,
+                    "duration": "PT15M42S"
+                }
+            ]
+        
         try:
             youtube = build('youtube', 'v3', developerKey=self.api_key)
             
@@ -180,20 +234,76 @@ class YouTubeAPIClient:
             logger.error(f"Error updating video title: {e}")
             return False
     
-    async def get_video_analytics(self, video_id: str, start_date: str, end_date: str) -> Dict[str, Any]:
-        """Get analytics data for a video (mock implementation)"""
-        return {
-            "video_id": video_id,
-            "views": 1000,
-            "impressions": 5000,
-            "click_through_rate": 0.2,
-            "average_view_duration": 300,
-            "likes": 50,
-            "dislikes": 2,
-            "comments": 25,
-            "shares": 10,
-            "subscribers_gained": 5
-        }
+    async def get_video_analytics(self, video_id: str, start_date: str, end_date: str, access_token: str) -> Dict[str, Any]:
+        """Get analytics data for a video using YouTube Analytics API"""
+        try:
+            credentials = Credentials(token=access_token)
+            youtube_analytics = build('youtubeAnalytics', 'v2', credentials=credentials)
+            
+            request = youtube_analytics.reports().query(
+                ids='channel==MINE',
+                startDate=start_date,
+                endDate=end_date,
+                metrics='views,likes,comments,shares,subscribersGained,averageViewDuration,impressions,estimatedMinutesWatched',
+                dimensions='video',
+                filters=f'video=={video_id}',
+                sort='day'
+            )
+            response = request.execute()
+            
+            if not response.get('rows'):
+                logger.warning(f"No analytics data found for video {video_id}")
+                return {
+                    "video_id": video_id,
+                    "views": 0,
+                    "impressions": 0,
+                    "click_through_rate": 0.0,
+                    "average_view_duration": 0,
+                    "likes": 0,
+                    "comments": 0,
+                    "shares": 0,
+                    "subscribers_gained": 0,
+                    "estimated_minutes_watched": 0
+                }
+            
+            row = response['rows'][0]
+            views = row[1] if len(row) > 1 else 0
+            likes = row[2] if len(row) > 2 else 0
+            comments = row[3] if len(row) > 3 else 0
+            shares = row[4] if len(row) > 4 else 0
+            subscribers_gained = row[5] if len(row) > 5 else 0
+            average_view_duration = row[6] if len(row) > 6 else 0
+            impressions = row[7] if len(row) > 7 else 0
+            estimated_minutes_watched = row[8] if len(row) > 8 else 0
+            
+            click_through_rate = (views / impressions) if impressions > 0 else 0.0
+            
+            return {
+                "video_id": video_id,
+                "views": int(views),
+                "impressions": int(impressions),
+                "click_through_rate": round(click_through_rate, 4),
+                "average_view_duration": int(average_view_duration),
+                "likes": int(likes),
+                "comments": int(comments),
+                "shares": int(shares),
+                "subscribers_gained": int(subscribers_gained),
+                "estimated_minutes_watched": int(estimated_minutes_watched)
+            }
+        except Exception as e:
+            logger.error(f"Error fetching video analytics: {e}")
+            return {
+                "video_id": video_id,
+                "views": 0,
+                "impressions": 0,
+                "click_through_rate": 0.0,
+                "average_view_duration": 0,
+                "likes": 0,
+                "comments": 0,
+                "shares": 0,
+                "subscribers_gained": 0,
+                "estimated_minutes_watched": 0
+            }
 
 
 youtube_client = YouTubeAPIClient()

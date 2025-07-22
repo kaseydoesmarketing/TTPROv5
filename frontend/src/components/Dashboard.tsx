@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { CreateTestModal } from './CreateTestModal';
 import { TestList } from './TestList';
+import { ChannelSelector } from './ChannelSelector';
 
 export function Dashboard() {
   const { currentUser, logout } = useAuth();
@@ -39,7 +40,7 @@ export function Dashboard() {
         return;
       }
 
-      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${apiUrl}/api/ab-tests/`, {
         headers: {
@@ -49,8 +50,8 @@ export function Dashboard() {
 
       if (response.ok) {
         const tests = await response.json();
-        const activeTests = tests.filter((test: any) => test.status === 'active').length;
-        const completedTests = tests.filter((test: any) => test.status === 'completed').length;
+        const activeTests = tests.filter((test: { status: string }) => test.status === 'active').length;
+        const completedTests = tests.filter((test: { status: string }) => test.status === 'completed').length;
         
         setStats({
           activeTests,
@@ -76,6 +77,7 @@ export function Dashboard() {
               <h1 className="text-xl font-bold text-gray-900">TitleTesterPro</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <ChannelSelector />
               <div className="flex items-center space-x-2">
                 {currentUser?.photoURL && (
                   <img

@@ -28,7 +28,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
   const fetchTests = async () => {
     try {
       const token = await getAuthToken();
-      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${apiUrl}/api/ab-tests/`, {
         headers: {
@@ -52,7 +52,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
   const startTest = async (testId: number) => {
     try {
       const token = await getAuthToken();
-      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/start`, {
         method: 'POST',
@@ -71,10 +71,54 @@ export function TestList({ refreshTrigger }: TestListProps) {
     }
   };
 
+  const pauseTest = async (testId: number) => {
+    try {
+      const token = await getAuthToken();
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/pause`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to pause test');
+      }
+
+      fetchTests();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to pause test');
+    }
+  };
+
+  const resumeTest = async (testId: number) => {
+    try {
+      const token = await getAuthToken();
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/resume`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to resume test');
+      }
+
+      fetchTests();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resume test');
+    }
+  };
+
   const stopTest = async (testId: number) => {
     try {
       const token = await getAuthToken();
-      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/stop`, {
         method: 'POST',
@@ -100,7 +144,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
     try {
       const token = await getAuthToken();
-      const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
 
       const response = await fetch(`${apiUrl}/api/ab-tests/${testId}`, {
         method: 'DELETE',
@@ -126,6 +170,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
+      case 'paused': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'stopped': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -228,14 +273,38 @@ export function TestList({ refreshTrigger }: TestListProps) {
               </button>
             )}
             {test.status === 'active' && (
-              <button
-                onClick={() => stopTest(test.id)}
-                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-              >
-                Stop Test
-              </button>
+              <>
+                <button
+                  onClick={() => pauseTest(test.id)}
+                  className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+                >
+                  Pause
+                </button>
+                <button
+                  onClick={() => stopTest(test.id)}
+                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                >
+                  Stop
+                </button>
+              </>
             )}
-            {test.status !== 'active' && (
+            {test.status === 'paused' && (
+              <>
+                <button
+                  onClick={() => resumeTest(test.id)}
+                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                >
+                  Resume
+                </button>
+                <button
+                  onClick={() => stopTest(test.id)}
+                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                >
+                  Stop
+                </button>
+              </>
+            )}
+            {(test.status === 'stopped' || test.status === 'completed') && (
               <button
                 onClick={() => deleteTest(test.id)}
                 className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"

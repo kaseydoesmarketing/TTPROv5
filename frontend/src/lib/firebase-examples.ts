@@ -2,7 +2,7 @@
 import { ref, set, get } from 'firebase/database';
 import { realtimeDB } from './firebase';
 
-export const writeUserData = async (userId: string, userData: any) => {
+export const writeUserData = async (userId: string, userData: Record<string, unknown>) => {
   try {
     await set(ref(realtimeDB, `users/${userId}`), userData);
     console.log('User data written successfully');

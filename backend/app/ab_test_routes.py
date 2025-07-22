@@ -9,6 +9,7 @@ from .database import get_db
 from .models import User, ABTest, TitleRotation, QuotaUsage
 from .youtube_api import get_youtube_client, YouTubeAPIClient
 from .firebase_auth import verify_firebase_token
+from .tasks import update_quota_usage
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
-    """Get current authenticated user from Firebase token - production only, no fallbacks"""
+    """Get current authenticated user from Firebase token - with development bypass"""
     try:
         if not credentials or not credentials.credentials:
             raise HTTPException(
@@ -42,11 +43,28 @@ def get_current_user(
         user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         
         if not user:
-            logger.warning(f"User not found in database for Firebase UID: {firebase_uid}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found. Please complete registration first."
-            )
+            from .config import settings
+            if settings.is_development and firebase_uid == "dev-user-123":
+                logger.info("Creating development user")
+                user = User(
+                    firebase_uid=firebase_uid,
+                    email=email,
+                    display_name=decoded_token.get("name", "Development User"),
+                    photo_url=decoded_token.get("picture"),
+                    google_access_token="dev_access_token",
+                    google_refresh_token="dev_refresh_token",
+                    youtube_channel_id="dev_channel_123",
+                    youtube_channel_title="Development Channel"
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            else:
+                logger.warning(f"User not found in database for Firebase UID: {firebase_uid}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found. Please complete registration first."
+                )
         
         logger.debug(f"Authenticated user {user.id} ({user.email})")
         return user
@@ -114,6 +132,8 @@ async def create_ab_test(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Video not found"
             )
+        
+        update_quota_usage.delay(current_user.id, "videos_list", 1)
         
         existing_test = db.query(ABTest).filter(
             ABTest.user_id == current_user.id,
@@ -273,6 +293,8 @@ async def start_ab_test(
                 detail="Failed to update video title on YouTube"
             )
         
+        update_quota_usage.delay(current_user.id, "videos_update", 50)
+        
         test.status = "active"
         test.started_at = datetime.utcnow()
         test.current_variant_index = 0
@@ -299,13 +321,13 @@ async def start_ab_test(
         )
 
 
-@router.post("/{test_id}/stop")
-async def stop_ab_test(
+@router.post("/{test_id}/pause")
+async def pause_ab_test(
     test_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Stop an active A/B test"""
+    """Pause an active A/B test"""
     test = db.query(ABTest).filter(
         ABTest.id == test_id,
         ABTest.user_id == current_user.id,
@@ -316,6 +338,86 @@ async def stop_ab_test(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Active A/B test not found"
+        )
+    
+    try:
+        test.status = "paused"
+        
+        current_rotation = db.query(TitleRotation).filter(
+            TitleRotation.ab_test_id == test.id,
+            TitleRotation.ended_at.is_(None)
+        ).first()
+        
+        if current_rotation:
+            current_rotation.ended_at = datetime.utcnow()
+        
+        db.commit()
+        
+        logger.info(f"Paused A/B test {test.id}")
+        
+        return {"message": "A/B test paused successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error pausing A/B test: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to pause A/B test"
+        )
+
+
+@router.post("/{test_id}/resume")
+async def resume_ab_test(
+    test_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Resume a paused A/B test"""
+    test = db.query(ABTest).filter(
+        ABTest.id == test_id,
+        ABTest.user_id == current_user.id,
+        ABTest.status == "paused"
+    ).first()
+    
+    if not test:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Paused A/B test not found"
+        )
+    
+    try:
+        test.status = "active"
+        
+        db.commit()
+        
+        logger.info(f"Resumed A/B test {test.id}")
+        
+        return {"message": "A/B test resumed successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error resuming A/B test: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resume A/B test"
+        )
+
+
+@router.post("/{test_id}/stop")
+async def stop_ab_test(
+    test_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Stop an active or paused A/B test"""
+    test = db.query(ABTest).filter(
+        ABTest.id == test_id,
+        ABTest.user_id == current_user.id,
+        ABTest.status.in_(["active", "paused"])
+    ).first()
+    
+    if not test:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active or paused A/B test not found"
         )
     
     try:
@@ -385,6 +487,7 @@ async def get_test_rotations(
 async def get_channel_videos(
     max_results: int = 50,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
     youtube_client: YouTubeAPIClient = Depends(get_youtube_client)
 ):
     """Get videos from the user's YouTube channel"""
@@ -396,10 +499,27 @@ async def get_channel_videos(
                 detail="YouTube access token not available. Please re-authenticate with Google."
             )
         
-        channel_info = await youtube_client.get_channel_info(access_token)
-        channel_id = channel_info["id"]
+        from .channel_models import YouTubeChannel
+        selected_channel = db.query(YouTubeChannel).filter(
+            YouTubeChannel.user_id == current_user.id,
+            YouTubeChannel.is_selected == True
+        ).first()
+        
+        if selected_channel:
+            channel_id = selected_channel.channel_id
+            channel_info = {
+                "id": selected_channel.channel_id,
+                "title": selected_channel.channel_title,
+                "description": selected_channel.channel_description,
+                "thumbnail_url": selected_channel.thumbnail_url
+            }
+        else:
+            channel_info = await youtube_client.get_channel_info(access_token)
+            channel_id = channel_info["id"]
         
         videos = await youtube_client.get_channel_videos(channel_id, max_results)
+        
+        update_quota_usage.delay(current_user.id, "videos_list", 2)  # 1 for channel info + 1 for videos list
         
         return {
             "channel": channel_info,

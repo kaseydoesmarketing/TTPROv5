@@ -9,7 +9,8 @@ from .config import settings
 from .database import get_db
 from .firebase_auth import verify_firebase_token
 from .models import User
-from .ab_test_routes import router as ab_test_router, get_current_user
+from .ab_test_routes import router as ab_test_router
+from .channel_routes import router as channel_router, get_current_user
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(ab_test_router)
+app.include_router(channel_router)
 
 security = HTTPBearer()
 
