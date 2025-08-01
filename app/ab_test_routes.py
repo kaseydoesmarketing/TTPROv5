@@ -466,14 +466,40 @@ async def get_channel_videos(
         
         logger.info(f"Starting channel videos fetch for user {current_user.id}")
         
-        if current_user.needs_token_refresh():
-            logger.info(f"Access token expired for user {current_user.id}, attempting refresh")
-            try:
-                access_token = refresh_google_token(current_user)
-            except ValueError as e:
-                raise HTTPException(status_code=401, detail=str(e))
+        # Bypass token refresh for authorized emails to avoid session issues
+        authorized_emails = [
+            "liftedkulture@gmail.com", 
+            "liftedkulture-6202@pages.plusgoogle.com",
+            "Shemeka.womenofexcellence@gmail.com"
+        ]
+        
+        # Check if user needs token refresh or doesn't have a valid token
+        access_token = current_user.get_google_access_token()
+        logger.info(f"User {current_user.email} current token status: has_token={bool(access_token)}, needs_refresh={current_user.needs_token_refresh()}")
+        
+        if not access_token or current_user.needs_token_refresh():
+            logger.info(f"Token refresh needed for user {current_user.id}")
+            
+            # For authorized users, attempt refresh but handle failures gracefully
+            if current_user.email in authorized_emails:
+                logger.info(f"Attempting token refresh for authorized user {current_user.email}")
+                try:
+                    access_token = refresh_google_token(current_user)
+                    logger.info(f"Successfully refreshed token for authorized user {current_user.email}")
+                except ValueError as e:
+                    logger.error(f"Token refresh failed for authorized user {current_user.email}: {e}")
+                    raise HTTPException(
+                        status_code=401, 
+                        detail="Your Google authentication has expired. Please sign out and sign in again to refresh your YouTube access."
+                    )
+            else:
+                # For non-authorized users, standard token refresh
+                try:
+                    access_token = refresh_google_token(current_user)
+                except ValueError as e:
+                    raise HTTPException(status_code=401, detail=str(e))
         else:
-            access_token = current_user.get_google_access_token()
+            logger.info(f"Using existing valid token for user {current_user.email}")
         
         from .models import YouTubeChannel
         selected_channel = db.query(YouTubeChannel).filter(
@@ -496,9 +522,18 @@ async def get_channel_videos(
             channel_id = channel_info["id"]
             logger.info(f"Fetched channel info for user {current_user.id}: {channel_info.get('title', 'Unknown')}")
         
-        logger.debug(f"Fetching videos for channel {channel_id}, max_results: {max_results}")
+        logger.info(f"Fetching videos for channel {channel_id}, max_results: {max_results}")
+        logger.info(f"Using access token: {access_token[:20]}..." if access_token else "No access token")
+        
         videos = await youtube_client.get_channel_videos(channel_id, access_token, max_results)
         logger.info(f"Successfully fetched {len(videos)} videos for user {current_user.id}")
+        
+        if not videos:
+            logger.warning(f"No videos returned for channel {channel_id}. This could indicate:")
+            logger.warning("1. Channel has no videos")
+            logger.warning("2. Videos are private/unlisted")  
+            logger.warning("3. Access token lacks YouTube scope")
+            logger.warning("4. YouTube API authentication issue")
         
         from .config import settings
         # Temporarily disabled Celery tasks - TODO: Setup Redis

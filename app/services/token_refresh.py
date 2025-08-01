@@ -11,36 +11,66 @@ logger = logging.getLogger(__name__)
 
 def refresh_google_token(user: User) -> str:
     """Refresh Google OAuth tokens using stored refresh token"""
+    logger.info(f"Starting token refresh for user {user.id} ({user.email})")
+    
     try:
-        logger.info(f"Refreshing token for user {user.id}")
+        user_id = user.id
+        user_email = user.email
+        logger.info(f"Refreshing token for user {user_id} ({user_email})")
         
-        refresh_token = user.get_google_refresh_token()
-        if not refresh_token:
-            raise ValueError("No refresh token available")
-        
-        creds = Credentials(
-            token=None,
-            refresh_token=refresh_token,
-            client_id=settings.google_client_id,
-            client_secret=settings.google_client_secret,
-            token_uri="https://oauth2.googleapis.com/token"
-        )
-        
-        creds.refresh(Request())
-        
+        # Use completely separate session to avoid conflicts
         db = SessionLocal()
         try:
-            expires_in = int(creds.expiry.timestamp() - time.time()) if creds.expiry else 3600
+            # Get the user in this session to avoid session conflicts
+            db_user = db.query(User).filter(User.id == user_id).first()
+            if not db_user:
+                logger.error(f"User {user_id} not found in database during token refresh")
+                raise ValueError("User not found in database")
+                
+            refresh_token = db_user.get_google_refresh_token()
+            if not refresh_token:
+                logger.error(f"User {user_id} ({user_email}) has no refresh token available")
+                logger.error("This usually means the user needs to re-authenticate with Google OAuth")
+                raise ValueError(f"No refresh token available for user {user_email}. Please sign out and sign in again to re-authenticate with Google.")
             
-            user.set_google_tokens(
-                access_token=creds.token,
-                refresh_token=creds.refresh_token or refresh_token,  # Keep existing if new one not provided
-                expires_in=expires_in
+            creds = Credentials(
+                token=None,
+                refresh_token=refresh_token,
+                client_id=settings.google_client_id,
+                client_secret=settings.google_client_secret,
+                token_uri="https://oauth2.googleapis.com/token"
             )
             
-            db.add(user)
+            creds.refresh(Request())
+            
+            expires_in = int(creds.expiry.timestamp() - time.time()) if creds.expiry else 3600
+            
+            # Use raw SQL to avoid session conflicts
+            from datetime import datetime, timedelta
+            expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            
+            # Update using raw SQL to avoid ORM session issues
+            from sqlalchemy import text
+            db.execute(
+                text("""
+                UPDATE users 
+                SET google_access_token = :access_token,
+                    google_refresh_token = COALESCE(:refresh_token, google_refresh_token),
+                    token_expires_at = :expires_at,
+                    updated_at = :updated_at
+                WHERE id = :user_id
+                """),
+                {
+                    "access_token": User._encrypt_token(creds.token) if creds.token else None,
+                    "refresh_token": User._encrypt_token(creds.refresh_token) if creds.refresh_token else None,
+                    "expires_at": expires_at,
+                    "updated_at": datetime.utcnow(),
+                    "user_id": user_id
+                }
+            )
+            
             db.commit()
-            logger.info(f"Token refreshed for user {user.id}")
+            logger.info(f"Token refreshed for user {user_id}")
             return creds.token
         finally:
             db.close()
