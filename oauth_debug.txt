@@ -1,0 +1,7 @@
+ID token contents:
+sub=100702787282198055542
+email=liftedkulture-6202@pages.plusgoogle.com
+name=Maschine Kulture TV
+email_verified=True
+All token keys: ['iss', 'azp', 'aud', 'sub', 'email', 'email_verified', 'at_hash', 'name', 'picture', 'given_name', 'iat', 'exp']
+Full token: {'iss': 'https://accounts.google.com', 'azp': '618794070994-0p4hlg4devshr6l6bkdh3c4l4oh34flp.apps.googleusercontent.com', 'aud': '618794070994-0p4hlg4devshr6l6bkdh3c4l4oh34flp.apps.googleusercontent.com', 'sub': '100702787282198055542', 'email': 'liftedkulture-6202@pages.plusgoogle.com', 'email_verified': True, 'at_hash': 'Zkl_lYciwJG_4ysgDv3G6g', 'name': 'Maschine Kulture TV', 'picture': 'https://lh3.googleusercontent.com/a/ACg8ocKpq4Mo5yt83VIQ0iD4XLUajZhQiER6KRNBsbtMpGZdFHJQRZ0z=s96-c', 'given_name': 'Maschine Kulture TV', 'iat': 1754008381, 'exp': 1754011981}
