@@ -6,9 +6,7 @@ dockerfilePath = "railway.dockerfile"
 startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
+preDeployCommand = "alembic upgrade head"
 
 [env]
 PORT = "8000"
-
-[deploy]
-preDeployCommand = "alembic upgrade head"
