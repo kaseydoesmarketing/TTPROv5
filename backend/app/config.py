@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     
     log_level: str = "INFO"
     
+    stripe_secret_key: str
+    stripe_publishable_key: str
+    stripe_webhook_secret: str
+    
     @property
     def is_development(self) -> bool:
         return self.environment.lower() in ["development", "dev", "local"]
