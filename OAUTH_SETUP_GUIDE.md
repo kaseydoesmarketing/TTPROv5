@@ -80,22 +80,28 @@ Enable these APIs in Google Cloud Console:
 
 ## 🔄 OAuth Flow Architecture
 
-### 1. Frontend → Firebase → Backend Flow
+### 1. Hybrid Authentication Flow (Popup + Redirect)
 ```
 User clicks login
 → Frontend validates environment
-→ Firebase popup with Google OAuth
-→ Get Firebase ID token + Google access token
-→ Register with backend using both tokens
-→ Backend validates and stores tokens
-→ User authenticated successfully
+→ Try Firebase popup with Google OAuth
+   ├─ SUCCESS: Get tokens → Register with backend → Done
+   └─ FAIL (COOP/popup blocked): Automatic redirect fallback
+      └─ User redirected to Google → Returns to app → Auth completed
 ```
 
-### 2. Error Handling & Retries
+### 2. COOP Protection & Fallbacks
+- **Cross-Origin-Opener-Policy**: Headers set to `same-origin-allow-popups`
+- **Popup blocked detection**: Automatic fallback to redirect
+- **COOP error handling**: Seamless redirect authentication
+- **Browser compatibility**: Works in all security configurations
+
+### 3. Error Handling & Retries
 - **Firebase timeout**: 30 seconds with 3 retries
 - **Backend registration**: 3 retries with exponential backoff
 - **Token refresh**: Automatic when needed
-- **Popup blocked**: Clear error message with retry option
+- **Popup blocked**: Automatic redirect fallback (no user intervention)
+- **COOP errors**: Seamless redirect authentication
 
 ## 🛠️ Troubleshooting
 

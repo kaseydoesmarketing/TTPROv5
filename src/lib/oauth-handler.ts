@@ -3,7 +3,7 @@
  * Prevents OAuth timeouts and handles all edge cases
  */
 
-import { signInWithPopup, AuthError, UserCredential } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, AuthError, UserCredential } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 import { oauthConfigManager } from './oauth-config';
 
@@ -29,6 +29,7 @@ class OAuthHandler {
   private isProcessing = false;
   private maxRetries = 3;
   private timeoutMs = 30000; // 30 seconds
+  private useRedirectFallback = false;
 
   private constructor() {}
 
@@ -45,9 +46,24 @@ class OAuthHandler {
     }
 
     this.isProcessing = true;
-    console.log('🚀 Starting Google OAuth flow...');
+    console.log('🚀 Starting hybrid OAuth flow (popup + redirect fallback)...');
 
     try {
+      // Check for redirect result first (in case we're returning from redirect)
+      const redirectResult = await this.checkRedirectResult();
+      if (redirectResult.success) {
+        console.log('✅ OAuth completed via redirect');
+        const backendResult = await this.registerWithBackend(redirectResult);
+        if (backendResult.success) {
+          return {
+            success: true,
+            user: redirectResult.user,
+            accessToken: redirectResult.accessToken,
+            refreshToken: redirectResult.refreshToken
+          };
+        }
+      }
+
       // Validate OAuth setup first
       const isValidSetup = await oauthConfigManager.validateGoogleOAuthSetup();
       if (!isValidSetup) {
@@ -116,6 +132,44 @@ class OAuthHandler {
     return { success: false, error: 'Max retries exceeded' };
   }
 
+  private async checkRedirectResult(): Promise<OAuthResult> {
+    try {
+      console.log('🔍 Checking for redirect result...');
+      const result = await getRedirectResult(auth);
+      
+      if (result && result.user) {
+        console.log('✅ Found redirect result');
+        
+        const user = result.user;
+        const accessToken = await user.getIdToken();
+        const refreshToken = user.refreshToken;
+        
+        const googleAccessToken = (result as any)._tokenResponse?.oauthAccessToken;
+        const googleRefreshToken = (result as any)._tokenResponse?.oauthRefreshToken;
+        
+        return {
+          success: true,
+          user: {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            emailVerified: user.emailVerified
+          },
+          accessToken,
+          refreshToken,
+          googleAccessToken,
+          googleRefreshToken
+        };
+      }
+      
+      return { success: false };
+    } catch (error) {
+      console.warn('⚠️ Redirect result check failed:', error);
+      return { success: false };
+    }
+  }
+
   private async firebaseLoginWithTimeout(): Promise<any> {
     return new Promise(async (resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -131,7 +185,38 @@ class OAuthHandler {
           await auth.signOut();
         }
 
-        const result: UserCredential = await signInWithPopup(auth, googleProvider);
+        let result: UserCredential;
+        
+        try {
+          // Try popup first
+          result = await signInWithPopup(auth, googleProvider);
+        } catch (popupError: any) {
+          console.warn('⚠️ Popup failed, trying redirect fallback...', popupError);
+          
+          // Check if it's a COOP error
+          if (popupError.message?.includes('Cross-Origin-Opener-Policy') || 
+              popupError.message?.includes('popup') ||
+              popupError.code === 'auth/popup-blocked' ||
+              popupError.code === 'auth/popup-closed-by-user') {
+            
+            console.log('🔄 Using redirect authentication due to popup restrictions...');
+            this.useRedirectFallback = true;
+            
+            // Store attempt in sessionStorage to track redirect
+            sessionStorage.setItem('oauth_redirect_attempt', 'true');
+            
+            // Use redirect instead
+            await signInWithRedirect(auth, googleProvider);
+            
+            // This will reload the page, so we won't reach here
+            clearTimeout(timeout);
+            return;
+          }
+          
+          // If it's not a popup error, re-throw
+          throw popupError;
+        }
+        
         const user = result.user;
         
         // Get tokens

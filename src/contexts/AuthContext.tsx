@@ -316,6 +316,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('🔧 Initializing OAuth configuration...');
         await oauthConfigManager.initializeConfig();
         oauthConfigManager.validateEnvironment();
+        
+        // Check if we're returning from a redirect
+        const redirectAttempt = sessionStorage.getItem('oauth_redirect_attempt');
+        if (redirectAttempt) {
+          console.log('🔄 Processing OAuth redirect result...');
+          sessionStorage.removeItem('oauth_redirect_attempt');
+          
+          // The Firebase auth state listener will handle the authentication
+          // No need to manually process redirect result here
+        }
+        
         console.log('✅ OAuth configuration initialized');
       } catch (error) {
         console.error('❌ OAuth initialization failed:', error);
