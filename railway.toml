@@ -9,3 +9,6 @@ healthcheckTimeout = 300
 
 [env]
 PORT = "8000"
+
+[deploy]
+preDeployCommand = "alembic upgrade head"
