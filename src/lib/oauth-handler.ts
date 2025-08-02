@@ -187,60 +187,18 @@ class OAuthHandler {
 
         let result: UserCredential;
         
-        try {
-          // Try popup first
-          result = await signInWithPopup(auth, googleProvider);
-        } catch (popupError: any) {
-          console.warn('⚠️ Popup failed, trying redirect fallback...', popupError);
-          
-          // Check if it's a COOP error
-          if (popupError.message?.includes('Cross-Origin-Opener-Policy') || 
-              popupError.message?.includes('popup') ||
-              popupError.code === 'auth/popup-blocked' ||
-              popupError.code === 'auth/popup-closed-by-user') {
-            
-            console.log('🔄 Using redirect authentication due to popup restrictions...');
-            this.useRedirectFallback = true;
-            
-            // Store attempt in sessionStorage to track redirect
-            sessionStorage.setItem('oauth_redirect_attempt', 'true');
-            
-            // Use redirect instead
-            await signInWithRedirect(auth, googleProvider);
-            
-            // This will reload the page, so we won't reach here
-            clearTimeout(timeout);
-            return;
-          }
-          
-          // If it's not a popup error, re-throw
-          throw popupError;
-        }
+        // Always use redirect to avoid COOP issues
+        console.log('🔄 Using redirect authentication to avoid popup blockers...');
         
-        const user = result.user;
+        // Store attempt in sessionStorage to track redirect
+        sessionStorage.setItem('oauth_redirect_attempt', 'true');
         
-        // Get tokens
-        const accessToken = await user.getIdToken();
-        const refreshToken = user.refreshToken;
-
-        // Get Google access token from credential
-        const googleAccessToken = (result as any)._tokenResponse?.oauthAccessToken;
-        const googleRefreshToken = (result as any)._tokenResponse?.oauthRefreshToken;
-
+        // Use redirect instead of popup
+        await signInWithRedirect(auth, googleProvider);
+        
+        // This will reload the page, so we won't reach here
         clearTimeout(timeout);
-        resolve({
-          user: {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            emailVerified: user.emailVerified
-          },
-          accessToken,
-          refreshToken,
-          googleAccessToken,
-          googleRefreshToken
-        });
+        return;
       } catch (error) {
         clearTimeout(timeout);
         reject(error);
