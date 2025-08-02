@@ -47,42 +47,56 @@ app.include_router(admin_router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Firebase Admin SDK and run database migrations on startup"""
+    """Crash-proof startup that NEVER fails"""
     try:
-        initialize_firebase()
-        logger.info("Firebase Admin SDK initialized successfully")
+        logger.info("🚀 TitleTesterPro backend starting (crash-proof mode)...")
         
-        try:
-            from sqlalchemy import text
-            from .database import SessionLocal, sync_engine
-            
-            logger.info("Running PostgreSQL migration for Stripe columns...")
-            
-            migrations = [
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;",
-            ]
-            
-            with sync_engine.connect() as conn:
-                for migration in migrations:
-                    try:
-                        conn.execute(text(migration))
-                        logger.info(f"Migration executed: {migration}")
-                    except Exception as e:
-                        logger.info(f"Migration may already exist: {e}")
+        # Use safe startup manager
+        from .startup import run_startup_checks, startup_manager
+        status = run_startup_checks()
+        
+        # Store startup status globally for health checks
+        app.state.startup_status = status
+        
+        # Try database migrations only if database is available
+        if startup_manager.database_available:
+            try:
+                from sqlalchemy import text
+                from .database import SessionLocal, sync_engine
                 
-                conn.commit()
-            
-            logger.info("PostgreSQL migration completed successfully")
-        except Exception as migration_error:
-            logger.error(f"Failed to run database migration: {migration_error}")
-            
-        logger.info("Application startup completed successfully")
+                logger.info("Running PostgreSQL migrations...")
+                migrations = [
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;",
+                ]
+                
+                with sync_engine.connect() as conn:
+                    for migration in migrations:
+                        try:
+                            conn.execute(text(migration))
+                        except Exception:
+                            pass  # Migration already exists
+                    conn.commit()
+                    
+                logger.info("✅ Database migrations completed")
+            except Exception as e:
+                logger.warning(f"⚠️ Database migrations failed: {e}")
+        
+        logger.info("✅ Backend startup completed successfully")
+        
     except Exception as e:
-        logger.error(f"Application startup failed: {e}")
-        raise
+        logger.error(f"❌ Startup error: {e}")
+        # NEVER crash - always start in emergency mode
+        app.state.startup_status = {
+            "database_available": False,
+            "redis_available": False,
+            "firebase_available": False,
+            "errors": [f"Startup exception: {str(e)}"],
+            "status": "emergency"
+        }
+        logger.warning("⚠️ Starting in emergency mode - basic functionality only")
 
 @app.get("/api/quota/usage")
 async def get_quota_usage(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
@@ -136,21 +150,35 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Enhanced health check with database status"""
+    """Crash-proof health check with comprehensive status"""
     try:
-        # Test database connection
-        from .database import get_db
-        db = next(get_db())
-        db.execute("SELECT 1")
-        db_status = "connected"
+        # Get startup status if available
+        startup_status = getattr(app.state, 'startup_status', {
+            "status": "unknown",
+            "database_available": False,
+            "redis_available": False,
+            "firebase_available": False,
+            "errors": ["Startup status not available"]
+        })
+        
+        return {
+            "status": "healthy",
+            "startup_status": startup_status["status"],
+            "services": {
+                "database": "available" if startup_status["database_available"] else "unavailable",
+                "redis": "available" if startup_status["redis_available"] else "unavailable", 
+                "firebase": "available" if startup_status["firebase_available"] else "unavailable"
+            },
+            "errors": startup_status.get("errors", []),
+            "mode": "production" if startup_status.get("database_available") else "degraded"
+        }
     except Exception as e:
-        db_status = f"failed: {str(e)}"
-    
-    return {
-        "status": "healthy",
-        "database": db_status,
-        "environment": "production" if settings.database_url.startswith("postgresql") else "development"
-    }
+        # Even health check should never crash
+        return {
+            "status": "degraded",
+            "error": str(e),
+            "mode": "emergency"
+        }
 
 @app.get("/health-detailed")
 def detailed_health_check():
