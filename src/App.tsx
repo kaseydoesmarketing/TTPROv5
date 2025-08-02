@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
+import EnvironmentValidator from './components/EnvironmentValidator';
 import { useState } from 'react';
 import './App.css';
 
@@ -30,9 +31,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <EnvironmentValidator>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </EnvironmentValidator>
   );
 }
 

@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { 
-  signInWithPopup, 
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
-  GoogleAuthProvider,
   User as FirebaseUser
 } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import { auth } from '../lib/firebase';
+import { oauthConfigManager } from '../lib/oauth-config';
+import { oauthHandler } from '../lib/oauth-handler';
 
 interface User {
   uid: string;
@@ -222,23 +222,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(true);
       setAuthError(null);
       
-      const result = await signInWithPopup(auth, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const accessToken = credential?.accessToken;
+      console.log('🚀 Starting robust OAuth flow...');
       
-      const user = await createUserFromFirebaseUser(result.user, accessToken);
+      // Initialize OAuth configuration
+      await oauthConfigManager.initializeConfig();
+      oauthConfigManager.validateEnvironment();
+      
+      // Use robust OAuth handler
+      const result = await oauthHandler.signInWithGoogle();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'OAuth flow failed');
+      }
+      
+      console.log('✅ OAuth flow completed, creating user...');
+      const user = await createUserFromFirebaseUser(auth.currentUser!, result.accessToken);
       setCurrentUser(user);
       
-      await registerUserWithBackend(user);
+      console.log('✅ User authenticated successfully');
       
     } catch (error: unknown) {
+      console.error('❌ Sign-in failed:', error);
       setLoading(false);
       const authError = handleAuthError(error, 'Google sign-in');
       throw authError;
-    }finally {
+    } finally {
       setLoading(false);
     }
-  }, [handleAuthError, createUserFromFirebaseUser, registerUserWithBackend]);
+  }, [handleAuthError, createUserFromFirebaseUser]);
 
   const logout = useCallback(async () => {
     try {
@@ -297,6 +308,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return unsubscribe;
   }, [createUserFromFirebaseUser, handleAuthError]);
+
+  // Initialize OAuth configuration on app start
+  useEffect(() => {
+    const initializeOAuth = async () => {
+      try {
+        console.log('🔧 Initializing OAuth configuration...');
+        await oauthConfigManager.initializeConfig();
+        oauthConfigManager.validateEnvironment();
+        console.log('✅ OAuth configuration initialized');
+      } catch (error) {
+        console.error('❌ OAuth initialization failed:', error);
+        handleAuthError(error, 'OAuth initialization');
+      }
+    };
+
+    initializeOAuth();
+  }, [handleAuthError]);
 
   const value: AuthContextType = {
     currentUser,
