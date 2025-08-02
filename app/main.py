@@ -143,7 +143,7 @@ security = HTTPBearer()
 def read_root():
     return {
         "message": "TitleTesterPro API",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "status": "healthy"
     }
 
