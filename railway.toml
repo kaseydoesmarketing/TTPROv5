@@ -1,0 +1,11 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "railway.dockerfile"
+
+[deploy]
+startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+[env]
+PORT = "8000"
