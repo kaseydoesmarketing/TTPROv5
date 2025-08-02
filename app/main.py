@@ -136,6 +136,24 @@ def read_root():
 
 @app.get("/health")
 def health_check():
+    """Enhanced health check with database status"""
+    try:
+        # Test database connection
+        from .database import get_db
+        db = next(get_db())
+        db.execute("SELECT 1")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"failed: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "environment": "production" if settings.database_url.startswith("postgresql") else "development"
+    }
+
+@app.get("/health-detailed")
+def detailed_health_check():
     return {"status": "healthy"}
 
 @app.get("/debug/firebase")

@@ -4,8 +4,8 @@ import os
 
 
 class Settings(BaseSettings):
-    database_url: str
-    redis_url: str
+    database_url: str = "sqlite:///./titletesterpro.db"  # Fallback to SQLite
+    redis_url: str = "redis://localhost:6379/0"  # Fallback to local Redis
     
     firebase_project_id: str
     firebase_private_key_id: str
