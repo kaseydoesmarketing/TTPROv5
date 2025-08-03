@@ -8,6 +8,9 @@ import os
 import sys
 from typing import Optional
 
+from .middleware import validate_environment_at_startup, log_environment_status
+from .env_validator import env_validator
+
 logger = logging.getLogger(__name__)
 
 class SafeStartup:
@@ -16,47 +19,38 @@ class SafeStartup:
         self.redis_available = False
         self.firebase_available = False
         self.startup_errors = []
+        self.environment_status = None
         
     def safe_database_init(self):
-        """Initialize database with comprehensive error handling"""
+        """Initialize database with comprehensive error handling using robust manager"""
         try:
-            from .config import settings
-            database_url = getattr(settings, 'database_url', None)
+            from .database_manager import db_manager
             
-            if not database_url:
-                self.startup_errors.append("DATABASE_URL not configured")
-                logger.warning("⚠️ DATABASE_URL not set, using in-memory fallback")
-                return False
+            # Use the robust database manager
+            success = db_manager.create_engine_with_retry()
+            
+            if success:
+                # Test the connection and get status
+                connection_status = db_manager.get_connection_status()
                 
-            # Test basic connection
-            if database_url.startswith('postgresql'):
-                try:
-                    import psycopg2
-                    from urllib.parse import urlparse
-                    
-                    parsed = urlparse(database_url)
-                    conn = psycopg2.connect(
-                        host=parsed.hostname,
-                        port=parsed.port or 5432,
-                        database=parsed.path.lstrip('/'),
-                        user=parsed.username,
-                        password=parsed.password,
-                        connect_timeout=5
-                    )
-                    conn.close()
+                if connection_status["healthy"]:
                     self.database_available = True
-                    logger.info("✅ PostgreSQL connection successful")
-                    return True
+                    logger.info("✅ Database connection established with robust manager")
                     
-                except Exception as e:
-                    self.startup_errors.append(f"PostgreSQL connection failed: {str(e)}")
-                    logger.error(f"❌ PostgreSQL failed: {e}")
+                    # Log connection details
+                    if connection_status["pool_info"]:
+                        pool_info = connection_status["pool_info"]
+                        logger.info(f"📊 Connection pool: {pool_info['checked_in']} available, {pool_info['checked_out']} in use")
+                    
+                    return True
+                else:
+                    self.startup_errors.append("Database connection unhealthy")
+                    logger.error("❌ Database connection established but unhealthy")
                     return False
             else:
-                # SQLite or other database
-                self.database_available = True
-                logger.info("✅ Database fallback configured")
-                return True
+                self.startup_errors.append("Database manager initialization failed")
+                logger.error("❌ Database manager initialization failed")
+                return False
                 
         except Exception as e:
             self.startup_errors.append(f"Database initialization error: {str(e)}")
@@ -64,27 +58,35 @@ class SafeStartup:
             return False
     
     def safe_redis_init(self):
-        """Initialize Redis with error handling"""
+        """Initialize Redis and job manager with error handling"""
         try:
             from .config import settings
             redis_url = getattr(settings, 'redis_url', None)
             
             if not redis_url:
                 self.startup_errors.append("REDIS_URL not configured")
-                logger.warning("⚠️ REDIS_URL not set, using in-memory cache")
+                logger.warning("⚠️ REDIS_URL not set, using fallback")
                 return False
                 
-            # Test Redis connection
+            # Test basic Redis connection
             import redis
             r = redis.from_url(redis_url, socket_timeout=5)
             r.ping()
-            self.redis_available = True
-            logger.info("✅ Redis connection successful")
-            return True
+            
+            # Initialize the robust job manager
+            from .job_manager import initialize_job_manager
+            if initialize_job_manager():
+                self.redis_available = True
+                logger.info("✅ Redis and job manager initialized successfully")
+                return True
+            else:
+                self.startup_errors.append("Job manager initialization failed")
+                logger.error("❌ Job manager initialization failed")
+                return False
             
         except Exception as e:
-            self.startup_errors.append(f"Redis connection failed: {str(e)}")
-            logger.error(f"❌ Redis failed: {e}")
+            self.startup_errors.append(f"Redis/Job manager initialization failed: {str(e)}")
+            logger.error(f"❌ Redis/Job manager failed: {e}")
             return False
     
     def safe_firebase_init(self):
@@ -103,12 +105,24 @@ class SafeStartup:
     
     def get_startup_status(self):
         """Get comprehensive startup status"""
+        # Determine overall status based on environment and services
+        if self.environment_status and not self.environment_status.get("startup_safe", False):
+            overall_status = "emergency"
+        elif self.firebase_available and self.database_available:
+            overall_status = "healthy"
+        elif self.firebase_available:
+            overall_status = "degraded"
+        else:
+            overall_status = "emergency"
+            
         return {
             "database_available": self.database_available,
             "redis_available": self.redis_available, 
             "firebase_available": self.firebase_available,
+            "environment_status": self.environment_status.get("mode", "unknown") if self.environment_status else "unknown",
+            "environment_safe": self.environment_status.get("startup_safe", False) if self.environment_status else False,
             "errors": self.startup_errors,
-            "status": "healthy" if self.firebase_available else "degraded"
+            "status": overall_status
         }
 
 # Global startup manager
@@ -118,10 +132,32 @@ def run_startup_checks():
     """Initialize application with comprehensive error handling"""
     logger.info("🚀 Starting TitleTesterPro backend...")
     
-    # Try to initialize each service
-    startup_manager.safe_database_init()
-    startup_manager.safe_redis_init()
-    startup_manager.safe_firebase_init()
+    # First, validate environment variables
+    try:
+        startup_manager.environment_status = validate_environment_at_startup()
+        log_environment_status()
+        
+        # Add environment errors to startup errors
+        if not startup_manager.environment_status["startup_safe"]:
+            startup_manager.startup_errors.append("Environment validation failed")
+            
+    except Exception as e:
+        logger.error(f"❌ Environment validation failed: {e}")
+        startup_manager.startup_errors.append(f"Environment validation error: {str(e)}")
+        startup_manager.environment_status = {
+            "startup_safe": False,
+            "mode": "emergency",
+            "error": str(e)
+        }
+    
+    # Only proceed with service initialization if environment is valid
+    if startup_manager.environment_status.get("startup_safe", False):
+        # Try to initialize each service
+        startup_manager.safe_database_init()
+        startup_manager.safe_redis_init()
+        startup_manager.safe_firebase_init()
+    else:
+        logger.warning("⚠️ Skipping service initialization due to environment issues")
     
     status = startup_manager.get_startup_status()
     

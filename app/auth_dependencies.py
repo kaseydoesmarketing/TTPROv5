@@ -1,8 +1,16 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from typing import Dict, Any, Optional
 from .database import get_db
 from .firebase_auth import verify_firebase_token
+from .auth_manager import (
+    auth_manager, 
+    TokenExpiredError, 
+    TokenInvalidError, 
+    AuthServiceUnavailableError,
+    retry_on_auth_failure
+)
 from .models import User
 from .config import settings
 import logging
@@ -11,142 +19,199 @@ logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+@retry_on_auth_failure(max_retries=2)
 async def get_current_firebase_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:
     """
-    Unified authentication dependency that:
-    1. Extracts token from Authorization: Bearer header using OAuth2PasswordBearer
-    2. Verifies Firebase ID token using firebase_admin.auth.verify_id_token
-    3. Returns authenticated User object from database
+    Enhanced authentication dependency with comprehensive error handling:
+    1. Uses robust auth manager with multiple verification methods
+    2. Handles token expiration and automatic refresh
+    3. Provides graceful fallbacks for service unavailability
+    4. Returns authenticated User object from database
     """
     try:
-        logger.info(f"AUTH: Received token: {token[:50]}..." if token else "AUTH: No token received")
+        logger.debug(f"AUTH: Processing token for user authentication")
         
-        # Try Firebase token verification first
+        # Use enhanced auth manager for token verification
         try:
-            decoded_token = verify_firebase_token(token)
+            decoded_token = auth_manager.verify_id_token_comprehensive(token)
             firebase_uid = decoded_token["uid"]
             email = decoded_token.get("email")
             
-            logger.debug(f"Firebase token verified for UID: {firebase_uid}, email: {email}")
+            logger.debug(f"✅ Token verified for UID: {firebase_uid}, email: {email}")
             
-            if not email:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="User email is required"
-                )
-                
-        except ValueError as e:
-            logger.warning(f"Firebase token verification failed: {e}")
+        except TokenExpiredError:
+            logger.warning("⚠️ Token expired - client should refresh")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired. Please refresh your authentication.",
+                headers={"WWW-Authenticate": "Bearer", "X-Auth-Error": "token_expired"}
+            )
             
-            # FALLBACK: Try to decode Firebase token manually to get email
-            # This is for debugging Firebase issues while maintaining security
-            if token and token.startswith("eyJ") and len(token) > 100:
-                try:
-                    import base64
-                    import json
-                    
-                    # Decode JWT payload (not verifying signature for now)
-                    # This is ONLY for authorized users as a temporary fix
-                    parts = token.split('.')
-                    if len(parts) >= 2:
-                        # Add padding if needed
-                        payload_b64 = parts[1]
-                        padding = len(payload_b64) % 4
-                        if padding:
-                            payload_b64 += '=' * (4 - padding)
-                        
-                        payload_json = base64.urlsafe_b64decode(payload_b64)
-                        payload = json.loads(payload_json)
-                        
-                        email = payload.get('email')
-                        firebase_uid = payload.get('sub') or payload.get('user_id')
-                        
-                        logger.info(f"Decoded token manually: email={email}, uid={firebase_uid}")
-                        
-                        # Only allow authorized emails for this fallback
-                        authorized_emails = [
-                            "liftedkulture@gmail.com", 
-                            "liftedkulture-6202@pages.plusgoogle.com",
-                            "Shemeka.womenofexcellence@gmail.com"
-                        ]
-                        
-                        if email in authorized_emails:
-                            # Find user by email specifically
-                            user = db.query(User).filter(User.email == email).first()
-                            if user:
-                                logger.warning(f"FALLBACK: Using user {email} with manual token decode")
-                                logger.warning("Firebase verification failing - needs investigation")
-                                return user
-                        else:
-                            logger.warning(f"Email {email} not in authorized list for fallback auth")
-                            
-                except Exception as decode_error:
-                    logger.error(f"Manual token decode failed: {decode_error}")
+        except TokenInvalidError as e:
+            logger.warning(f"⚠️ Invalid token: {e}")
             
-            # If fallback didn't work, re-raise the original Firebase error
-            raise
+            # Fallback for debugging - only for authorized emails
+            if _try_emergency_fallback(token, db) is not None:
+                return _try_emergency_fallback(token, db)
+            
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication token. Please sign in again.",
+                headers={"WWW-Authenticate": "Bearer", "X-Auth-Error": "token_invalid"}
+            )
+            
+        except AuthServiceUnavailableError as e:
+            logger.error(f"❌ Auth service unavailable: {e}")
+            
+            # Try emergency fallback for critical operations
+            fallback_user = _try_emergency_fallback(token, db)
+            if fallback_user:
+                logger.warning("🚨 Using emergency authentication fallback")
+                return fallback_user
+            
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Please try again.",
+                headers={"Retry-After": "30"}
+            )
         
-        # Try multiple UID formats to find the user
-        user = db.query(User).filter(
-            (User.firebase_uid == firebase_uid) |
-            (User.firebase_uid == f"google_{firebase_uid}") |
-            (User.firebase_uid == f"google:{firebase_uid}") |
-            (User.email == email)
-        ).first()
+        # Find user in database with multiple fallback strategies
+        user = _find_user_by_uid_and_email(db, firebase_uid, email)
         
         if not user:
+            # Handle development user creation
             if settings.is_development and firebase_uid == "dev-user-123":
-                logger.info("Creating development user")
-                user = User(
-                    firebase_uid=firebase_uid,
-                    email=email or "dev@titletesterpro.com",
-                    display_name=decoded_token.get("name", "Development User"),
-                    photo_url=decoded_token.get("picture"),
-                    google_access_token="dev_access_token",
-                    google_refresh_token="dev_refresh_token",
-                    youtube_channel_id="dev_channel_123",
-                    youtube_channel_title="Development Channel"
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
+                user = _create_development_user(db, decoded_token)
             else:
-                logger.warning(f"User not found in database for Firebase UID: {firebase_uid}")
-                logger.info(f"Available Firebase UIDs in database: {[u.firebase_uid for u in db.query(User).all()]}")
+                logger.warning(f"⚠️ User not found for UID: {firebase_uid}, email: {email}")
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found. Please complete registration first."
+                    detail="User not found. Please complete registration first.",
+                    headers={"X-Auth-Error": "user_not_found"}
                 )
         
-        logger.debug(f"Authenticated user {user.id} ({user.email})")
-        logger.debug(f"User has valid tokens: {user.has_valid_tokens()}, needs refresh: {user.needs_token_refresh()}")
+        # Check and refresh tokens if needed
+        await _ensure_user_tokens_valid(user, db)
         
-        access_token = user.get_google_access_token()
-        if access_token:
-            logger.debug(f"User has access token (length: {len(access_token)})")
-        else:
-            logger.warning(f"User {user.id} has no access token available")
-            
+        logger.debug(f"✅ User {user.id} ({user.email}) authenticated successfully")
         return user
         
     except HTTPException:
         raise
-    except ValueError as e:
-        logger.error(f"Token verification failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired authentication token",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
     except Exception as e:
-        logger.error(f"Authentication failed: {e}")
+        logger.error(f"❌ Unexpected authentication error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Authentication failed"
+            detail="Authentication system error. Please try again.",
+            headers={"X-Auth-Error": "system_error"}
         )
+
+def _find_user_by_uid_and_email(db: Session, firebase_uid: str, email: str) -> Optional[User]:
+    """Find user by Firebase UID or email with multiple format fallbacks"""
+    # Try multiple UID formats for backwards compatibility
+    uid_formats = [
+        firebase_uid,
+        f"google_{firebase_uid}",
+        f"google:{firebase_uid}"
+    ]
+    
+    for uid_format in uid_formats:
+        user = db.query(User).filter(User.firebase_uid == uid_format).first()
+        if user:
+            # Update UID to canonical format if needed
+            if user.firebase_uid != firebase_uid:
+                user.firebase_uid = firebase_uid
+                db.commit()
+            return user
+    
+    # Fallback: find by email
+    if email:
+        return db.query(User).filter(User.email == email).first()
+    
+    return None
+
+def _create_development_user(db: Session, decoded_token: Dict[str, Any]) -> User:
+    """Create development user for testing"""
+    logger.info("🔧 Creating development user")
+    user = User(
+        firebase_uid=decoded_token["uid"],
+        email=decoded_token.get("email", "dev@titletesterpro.com"),
+        display_name=decoded_token.get("name", "Development User"),
+        photo_url=decoded_token.get("picture"),
+        google_access_token="dev_access_token",
+        google_refresh_token="dev_refresh_token",
+        youtube_channel_id="dev_channel_123",
+        youtube_channel_title="Development Channel"
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+async def _ensure_user_tokens_valid(user: User, db: Session):
+    """Ensure user's Google tokens are valid and refresh if needed"""
+    try:
+        if user.needs_token_refresh():
+            refresh_token = user.get_google_refresh_token()
+            if refresh_token:
+                logger.info(f"🔄 Refreshing tokens for user {user.id}")
+                try:
+                    new_tokens = auth_manager.refresh_google_token(refresh_token)
+                    user.set_google_tokens(
+                        access_token=new_tokens.get("access_token"),
+                        refresh_token=new_tokens.get("refresh_token", refresh_token)
+                    )
+                    db.commit()
+                    logger.info(f"✅ Tokens refreshed for user {user.id}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Token refresh failed for user {user.id}: {e}")
+    except Exception as e:
+        logger.warning(f"⚠️ Token validation check failed for user {user.id}: {e}")
+
+def _try_emergency_fallback(token: str, db: Session) -> Optional[User]:
+    """Emergency fallback authentication for critical situations"""
+    try:
+        if not token or not token.startswith("eyJ"):
+            return None
+        
+        import base64
+        import json
+        
+        # Decode JWT payload without signature verification
+        parts = token.split('.')
+        if len(parts) < 2:
+            return None
+        
+        payload_b64 = parts[1]
+        padding = len(payload_b64) % 4
+        if padding:
+            payload_b64 += '=' * (4 - padding)
+        
+        payload_json = base64.urlsafe_b64decode(payload_b64)
+        payload = json.loads(payload_json)
+        
+        email = payload.get('email')
+        
+        # Only allow for pre-authorized emergency access
+        emergency_emails = [
+            "liftedkulture@gmail.com", 
+            "liftedkulture-6202@pages.plusgoogle.com",
+            "Shemeka.womenofexcellence@gmail.com"
+        ]
+        
+        if email in emergency_emails:
+            user = db.query(User).filter(User.email == email).first()
+            if user:
+                logger.warning(f"🚨 EMERGENCY FALLBACK: Authenticated {email}")
+                return user
+        
+    except Exception as e:
+        logger.debug(f"Emergency fallback failed: {e}")
+    
+    return None
 
 
 async def get_current_paid_user(

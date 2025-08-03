@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -150,39 +151,171 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Crash-proof health check with comprehensive status"""
+    """Comprehensive health check with environment and service status"""
     try:
+        from .env_validator import env_validator
+        
         # Get startup status if available
         startup_status = getattr(app.state, 'startup_status', {
             "status": "unknown",
             "database_available": False,
             "redis_available": False,
             "firebase_available": False,
+            "environment_safe": False,
             "errors": ["Startup status not available"]
         })
         
+        # Get environment health data
+        env_health = env_validator.get_health_check_data()
+        
+        # Determine overall health
+        overall_status = "healthy"
+        if not startup_status.get("environment_safe", False):
+            overall_status = "emergency"
+        elif not startup_status.get("firebase_available", False):
+            overall_status = "degraded"
+        elif startup_status.get("status") in ["emergency", "degraded"]:
+            overall_status = startup_status["status"]
+            
         return {
-            "status": "healthy",
-            "startup_status": startup_status["status"],
+            "status": overall_status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "environment": env_health,
             "services": {
                 "database": "available" if startup_status["database_available"] else "unavailable",
                 "redis": "available" if startup_status["redis_available"] else "unavailable", 
                 "firebase": "available" if startup_status["firebase_available"] else "unavailable"
             },
-            "errors": startup_status.get("errors", []),
-            "mode": "production" if startup_status.get("database_available") else "degraded"
+            "startup": {
+                "status": startup_status.get("status", "unknown"),
+                "environment_safe": startup_status.get("environment_safe", False),
+                "errors": startup_status.get("errors", [])
+            },
+            "can_process_requests": startup_status.get("environment_safe", False) and startup_status.get("firebase_available", False)
         }
     except Exception as e:
         # Even health check should never crash
+        logger.error(f"Health check failed: {e}")
         return {
-            "status": "degraded",
+            "status": "emergency",
+            "timestamp": datetime.utcnow().isoformat(),
             "error": str(e),
-            "mode": "emergency"
+            "message": "Health check system failure"
         }
 
 @app.get("/health-detailed")
 def detailed_health_check():
-    return {"status": "healthy"}
+    """Detailed health check with full environment variable status"""
+    try:
+        from .env_validator import env_validator
+        
+        # Get comprehensive status
+        startup_status = getattr(app.state, 'startup_status', {})
+        env_summary = env_validator.get_status_summary()
+        
+        # Test each service with detailed info
+        service_details = {}
+        
+        # Database details
+        try:
+            from .database import SessionLocal
+            db = SessionLocal()
+            db.execute("SELECT 1")
+            db.close()
+            service_details["database"] = {
+                "status": "healthy",
+                "connection": "successful",
+                "type": "postgresql" if "postgresql" in str(startup_status.get("database_url", "")) else "sqlite"
+            }
+        except Exception as e:
+            service_details["database"] = {
+                "status": "unhealthy",
+                "error": str(e),
+                "connection": "failed"
+            }
+        
+        # Redis details
+        try:
+            import redis
+            from .config import settings
+            r = redis.from_url(settings.redis_url, socket_timeout=2)
+            r.ping()
+            service_details["redis"] = {
+                "status": "healthy",
+                "connection": "successful"
+            }
+        except Exception as e:
+            service_details["redis"] = {
+                "status": "unhealthy", 
+                "error": str(e),
+                "connection": "failed"
+            }
+        
+        # Firebase details
+        try:
+            from .firebase_auth import create_custom_token
+            create_custom_token("health_check", {"test": True})
+            service_details["firebase"] = {
+                "status": "healthy",
+                "can_create_tokens": True
+            }
+        except Exception as e:
+            service_details["firebase"] = {
+                "status": "unhealthy",
+                "error": str(e),
+                "can_create_tokens": False
+            }
+        
+        return {
+            "status": "detailed_check",
+            "timestamp": datetime.utcnow().isoformat(),
+            "environment": {
+                "mode": env_summary["mode"],
+                "variables_status": env_summary["details"],
+                "summary": {
+                    "total": env_summary["total_vars"],
+                    "configured": env_summary["present"],
+                    "missing_critical": env_summary["missing_critical"],
+                    "missing_important": env_summary["missing_important"]
+                }
+            },
+            "services": service_details,
+            "startup": startup_status,
+            "recommendations": _get_health_recommendations(env_summary, service_details)
+        }
+        
+    except Exception as e:
+        logger.error(f"Detailed health check failed: {e}")
+        return {
+            "status": "error",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e),
+            "message": "Detailed health check system failure"
+        }
+
+def _get_health_recommendations(env_summary: dict, service_details: dict) -> list:
+    """Generate actionable recommendations based on health status"""
+    recommendations = []
+    
+    if env_summary["missing_critical"] > 0:
+        recommendations.append("Set missing critical environment variables to enable full functionality")
+    
+    if env_summary["missing_important"] > 0:
+        recommendations.append("Set missing important environment variables to avoid degraded performance")
+    
+    for service, details in service_details.items():
+        if details["status"] == "unhealthy":
+            if service == "database":
+                recommendations.append("Check DATABASE_URL and ensure PostgreSQL is accessible")
+            elif service == "redis":
+                recommendations.append("Check REDIS_URL and ensure Redis is running")
+            elif service == "firebase":
+                recommendations.append("Verify Firebase credentials and project configuration")
+    
+    if not recommendations:
+        recommendations.append("All systems are operating normally")
+    
+    return recommendations
 
 @app.get("/debug/firebase")
 def debug_firebase():
@@ -211,6 +344,115 @@ def debug_firebase():
     except Exception as e:
         return {"error": str(e), "firebase_initialized": False}
 
+
+@app.get("/health/environment")
+def environment_health():
+    """Environment-specific health check endpoint"""
+    try:
+        from .env_validator import env_validator
+        
+        env_summary = env_validator.get_status_summary()
+        
+        # Get safe environment info (no sensitive values)
+        safe_env_status = {}
+        for var_name, result in env_summary["details"].items():
+            safe_env_status[var_name] = {
+                "status": result["status"],
+                "category": result["category"],
+                "has_fallback": result.get("has_fallback", False),
+                "description": result["description"]
+            }
+        
+        return {
+            "environment_mode": env_summary["mode"],
+            "can_start_safely": env_summary["can_start"],
+            "configuration_percentage": round(env_summary["percentage_configured"], 1),
+            "summary": {
+                "total_variables": env_summary["total_vars"],
+                "configured": env_summary["present"],
+                "missing_critical": env_summary["missing_critical"],
+                "missing_important": env_summary["missing_important"]
+            },
+            "variables": safe_env_status,
+            "last_validated": env_summary["timestamp"]
+        }
+    except Exception as e:
+        logger.error(f"Environment health check failed: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "message": "Environment health check failed"
+        }
+
+@app.get("/health/database")
+def database_health():
+    """Database-specific health check with connection pool status"""
+    try:
+        from .database_manager import db_manager
+        
+        connection_status = db_manager.get_connection_status()
+        
+        # Test actual query performance
+        query_start = datetime.utcnow()
+        try:
+            with db_manager.get_db_session() as session:
+                session.execute(text("SELECT 1 as test, NOW() as timestamp"))
+                query_time = (datetime.utcnow() - query_start).total_seconds()
+                query_success = True
+        except Exception as e:
+            query_time = (datetime.utcnow() - query_start).total_seconds()
+            query_success = False
+            query_error = str(e)
+        
+        response = {
+            "database_status": connection_status["status"],
+            "healthy": connection_status["healthy"],
+            "query_test": {
+                "success": query_success,
+                "response_time_seconds": round(query_time, 3)
+            },
+            "connection_pool": connection_status["pool_info"],
+            "database_type": connection_status["database_url_type"],
+            "last_health_check": connection_status["last_check"]
+        }
+        
+        if not query_success:
+            response["query_test"]["error"] = query_error
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {
+            "database_status": "error",
+            "healthy": False,
+            "error": str(e),
+            "message": "Database health check system failure"
+        }
+
+@app.get("/health/jobs")
+def job_health():
+    """Job queue and background task health check"""
+    try:
+        from .job_manager import job_manager
+        
+        health_status = job_manager.get_health_status()
+        
+        return {
+            "job_manager_status": health_status["status"],
+            "redis_connected": health_status["redis_connected"],
+            "celery_configured": health_status["celery_configured"],
+            "job_statistics": health_status["statistics"],
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Job health check failed: {e}")
+        return {
+            "job_manager_status": "error",
+            "error": str(e),
+            "message": "Job health check system failure"
+        }
 
 @app.get("/healthz")
 async def healthz():
