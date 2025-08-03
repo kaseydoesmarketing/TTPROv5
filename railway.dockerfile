@@ -1,4 +1,4 @@
-# Railway-specific Dockerfile for Python backend - FORCE REBUILD
+# Railway-specific Dockerfile for Python backend - FORCE REBUILD $(date +%s)
 FROM python:3.11-slim
 
 # Set working directory

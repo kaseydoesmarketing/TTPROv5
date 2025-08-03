@@ -1,3 +1,0 @@
-# FRESH DEPLOYMENT TRIGGER 1754115999
-# Clear all caches and force complete rebuild
-DEPLOYMENT_TIMESTAMP=1754115999

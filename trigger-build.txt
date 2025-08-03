@@ -1,2 +1,0 @@
-Trigger new Vercel build - $(date)
-Build test: $(date +%s)
