@@ -5,7 +5,7 @@ import os
 
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./titletesterpro.db"  # Fallback to SQLite
-    redis_url: str = "redis://localhost:6379/0"  # Fallback to local Redis
+    redis_url: str = "redis://localhost:6379/0"  # Fallback to local Redis (Railway deployment safe)
     
     # Firebase Configuration (with Railway-compatible defaults)
     firebase_project_id: str = "titletesterpro"
