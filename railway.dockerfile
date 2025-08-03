@@ -20,6 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY alembic.ini .
 COPY alembic/ ./alembic/
+COPY start.sh .
+
+# Make start script executable
+RUN chmod +x start.sh
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app
@@ -34,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD python -c "import requests, os; requests.get(f'http://localhost:{os.environ.get(\"PORT\", \"8000\")}/health')" || exit 1
 
 # Start command
-CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["./start.sh"]
