@@ -12,3 +12,4 @@ restartPolicyType = "on_failure"
 [env]
 PORT = "8000"
 FORCE_DEPLOY = "$(date +%s)"
+CACHE_BUST = "1754202844"
