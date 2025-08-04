@@ -1,13 +1,15 @@
-# Railway-specific Dockerfile for Python backend - FORCE REBUILD 1754202844
+# Railway-specific Dockerfile for Python backend
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies required for PostgreSQL and Python packages
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    libpq-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

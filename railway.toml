@@ -10,5 +10,5 @@ preDeployCommand = "alembic upgrade head"
 restartPolicyType = "on_failure"
 
 [env]
-FORCE_DEPLOY = "$(date +%s)"
-CACHE_BUST = "1754202844"
+# Railway will automatically set PORT
+# All other environment variables should be set in Railway dashboard

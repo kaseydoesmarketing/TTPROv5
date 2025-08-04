@@ -4,8 +4,13 @@ import os
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./titletesterpro.db"  # Fallback to SQLite
-    redis_url: str = "redis://localhost:6379/0"  # Fallback to local Redis (Railway deployment safe)
+    # Railway provides DATABASE_URL and REDIS_URL automatically when you provision these services
+    # If not set, fallback to SQLite for development
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./titletesterpro.db")
+    
+    # Railway provides REDIS_URL when you add Redis service
+    # If not set, fallback to local Redis URL
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
     # Firebase Configuration (with Railway-compatible defaults)
     firebase_project_id: str = "titletesterpro"
