@@ -70,7 +70,7 @@ Click your app service → **Variables** → **Raw Editor**
 # Get these from Firebase Console → Project Settings → Service Accounts
 FIREBASE_PROJECT_ID=your-actual-firebase-project-id
 FIREBASE_PRIVATE_KEY_ID=your-actual-private-key-id
-FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nYOUR-ACTUAL-PRIVATE-KEY-WITH-NEWLINES-REPLACED-BY-\n\n-----END PRIVATE KEY-----
+FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n[PASTE-YOUR-ACTUAL-FIREBASE-PRIVATE-KEY-HERE]\n-----END PRIVATE KEY-----
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
 FIREBASE_CLIENT_ID=your-actual-client-id
 
