@@ -28,8 +28,8 @@ processed_auth_codes = set()
 
 app = FastAPI(
     title="TitleTesterPro API",
-    description="A SaaS platform for A/B testing YouTube titles",
-    version="1.0.0"
+    description="A SaaS platform for A/B testing YouTube titles - Railway Deployment Verified",
+    version="1.0.1"
 )
 
 app.add_middleware(
@@ -180,6 +180,8 @@ def health_check():
         return {
             "status": overall_status,
             "timestamp": datetime.utcnow().isoformat(),
+            "deployment_version": "1.0.1-railway",
+            "deployment_time": "2025-08-04T05:45:00Z",
             "environment": env_health,
             "services": {
                 "database": "available" if startup_status["database_available"] else "unavailable",
