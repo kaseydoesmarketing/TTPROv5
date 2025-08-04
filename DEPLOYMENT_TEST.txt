@@ -1,0 +1,4 @@
+Railway Deployment Test
+Time: 2025-08-04 05:50:00 UTC
+Version: 1.0.2
+This file proves Railway deployments are working.
