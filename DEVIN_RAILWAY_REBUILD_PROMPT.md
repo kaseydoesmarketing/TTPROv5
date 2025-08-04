@@ -7,15 +7,48 @@
 - Branch: `main` (work directly on main branch)
 - You should already have access to this repository
 
-### Primary Instructions File
-**READ THIS FIRST**: `/RAILWAY_COMPLETE_REBUILD_GUIDE.md`
+### ⚠️ IMPORTANT: Delete Existing Deployments First
 
-This file contains:
-- Complete step-by-step Railway setup instructions
-- All environment variables needed
-- Where to find each credential
-- Common pitfalls and solutions
-- Post-setup verification steps
+**Before starting, DELETE any existing deployments:**
+
+1. **Railway**:
+   - Log into Railway dashboard
+   - Look for ANY existing TTPROv4 projects
+   - Go to Settings → Danger → Delete Project
+   - Delete ALL TTPROv4 projects to start completely fresh
+
+2. **Vercel**:
+   - Log into Vercel dashboard
+   - Look for ANY existing TTPROv4 projects
+   - Go to Settings → Advanced → Delete Project
+   - Delete ALL TTPROv4 projects
+
+3. **GitHub Webhooks**:
+   - Go to: https://github.com/kaseydoesmarketing/TTPROv4/settings/hooks
+   - DELETE any existing Railway or Vercel webhooks
+   - We'll create fresh ones during setup
+
+**Why delete everything?**
+- Ensures clean webhook connections
+- Prevents conflicting deployments
+- Avoids environment variable conflicts
+- Guarantees both services sync properly
+
+### Primary Instructions Files
+
+1. **Main Setup Guide**: 
+   - Path in repo: `/RAILWAY_COMPLETE_REBUILD_GUIDE.md`
+   - Direct link: https://github.com/kaseydoesmarketing/TTPROv4/blob/main/RAILWAY_COMPLETE_REBUILD_GUIDE.md
+   - Contains complete Railway setup instructions
+
+2. **Environment Variables Reference**:
+   - Path in repo: `/.env.example`
+   - Direct link: https://github.com/kaseydoesmarketing/TTPROv4/blob/main/.env.example
+   - Shows all required environment variables
+
+3. **This Instructions File**:
+   - Path in repo: `/DEVIN_RAILWAY_REBUILD_PROMPT.md`
+   - Direct link: https://github.com/kaseydoesmarketing/TTPROv4/blob/main/DEVIN_RAILWAY_REBUILD_PROMPT.md
 
 ### Your Specific Tasks
 
@@ -179,4 +212,25 @@ When complete:
 - Testing the complete auth flow
 - Verifying both services auto-deploy together
 
-Start by reading `/RAILWAY_COMPLETE_REBUILD_GUIDE.md` for Railway setup, then set up Vercel with matching configuration.
+## Summary of Steps
+
+1. **DELETE everything first**:
+   - All Railway projects named TTPROv4
+   - All Vercel projects named TTPROv4
+   - All webhooks in GitHub for this repo
+
+2. **Follow setup guides**:
+   - Read: https://github.com/kaseydoesmarketing/TTPROv4/blob/main/RAILWAY_COMPLETE_REBUILD_GUIDE.md
+   - This has EVERYTHING you need for Railway setup
+
+3. **Create fresh deployments**:
+   - Railway: Backend API + PostgreSQL + Redis
+   - Vercel: Frontend React app
+   - Both connected to same GitHub repo
+
+4. **Verify synchronization**:
+   - One git push deploys BOTH services
+   - No manual deployments needed
+   - Everything stays in sync
+
+**Start here**: https://github.com/kaseydoesmarketing/TTPROv4/blob/main/RAILWAY_COMPLETE_REBUILD_GUIDE.md
