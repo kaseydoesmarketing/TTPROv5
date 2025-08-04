@@ -60,12 +60,8 @@ class SafeStartup:
     def safe_redis_init(self):
         """Initialize Redis and job manager with error handling - Railway deployment safe"""
         try:
-            # Check if this is a Railway deployment - skip Redis if so
+            # Don't skip Redis in Railway - it should be available
             import os
-            if os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('RAILWAY_PROJECT_ID'):
-                logger.info("ℹ️ Railway deployment detected - skipping Redis initialization")
-                return False
-                
             from .config import settings
             redis_url = getattr(settings, 'redis_url', None)
             

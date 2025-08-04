@@ -63,8 +63,9 @@ class DatabaseConnectionManager:
                 return False
             
             # Parse database URL to determine type
+            # Railway uses 'postgresql://' format
             parsed = urlparse(database_url)
-            is_postgresql = parsed.scheme in ['postgresql', 'postgres']
+            is_postgresql = parsed.scheme in ['postgresql', 'postgres', 'postgresql+psycopg', 'postgresql+psycopg2']
             
             if is_postgresql:
                 logger.info("🔗 Configuring PostgreSQL connection with pooling...")

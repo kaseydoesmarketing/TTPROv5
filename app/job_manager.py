@@ -89,8 +89,8 @@ class RobustJobManager:
         try:
             redis_url = settings.redis_url
             if not redis_url:
-                logger.warning("⚠️ REDIS_URL not configured, using fallback")
-                redis_url = "redis://localhost:6379/0"
+                logger.error("❌ REDIS_URL not configured")
+                return False
             
             self.redis_client = redis.from_url(
                 redis_url,
@@ -116,8 +116,8 @@ class RobustJobManager:
         try:
             self.celery_app = Celery(
                 "titletesterpro_robust",
-                broker=settings.redis_url or "redis://localhost:6379/0",
-                backend=settings.redis_url or "redis://localhost:6379/0",
+                broker=settings.redis_url,
+                backend=settings.redis_url,
                 include=["app.robust_tasks"]
             )
             
