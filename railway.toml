@@ -6,7 +6,7 @@ restartPolicyType = "always"
 
 [[services]]
 name = "backend"
-source = "."
+source = "backend"
 
 [services.variables]
 PORT = "8000"
