@@ -1,5 +1,5 @@
 # Railway-specific Dockerfile for Python backend
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -10,13 +10,26 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libpq-dev \
     python3-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Install Poetry
+RUN pip install --upgrade pip && pip install poetry
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy poetry files
+COPY pyproject.toml poetry.lock* ./
+
+# Configure poetry to not create virtual environment
+ENV POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install dependencies with fallback
+RUN poetry install --no-dev --no-ansi || \
+    (echo "Poetry failed, exporting to requirements.txt" && \
+     poetry export -f requirements.txt --output requirements.txt --without-hashes && \
+     pip install -r requirements.txt)
 
 # Copy application code
 COPY app/ ./app/
@@ -27,17 +40,8 @@ COPY start.sh .
 # Make start script executable
 RUN chmod +x start.sh
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app
-RUN chown -R app:app /app
-USER app
+# Use Railway's PORT environment variable
+ENV PORT=${PORT:-8000}
 
-# Expose port
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests, os; requests.get(f'http://localhost:{os.environ.get(\"PORT\", \"8000\")}/health')" || exit 1
-
-# Start command
-CMD ["./start.sh"]
+# Start command - use Railway's PORT
+CMD ["sh", "-c", "./start.sh"]
