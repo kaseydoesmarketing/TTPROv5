@@ -5,7 +5,7 @@ builder = "nixpacks"
 restartPolicyType = "always"
 
 [[services]]
-name = "backend"
+name = "web"
 source = "backend"
 
 [services.variables]
@@ -19,3 +19,27 @@ timeout = 300
 [services.deploy]
 replicas = 1
 strategy = "rolling"
+
+[[services]]
+name = "beat"
+source = "backend"
+
+[services.variables]
+ENVIRONMENT = "production"
+
+[services.deploy]
+replicas = 1
+strategy = "rolling"
+startCommand = "celery -A app.celery_app beat --loglevel=info"
+
+[[services]]
+name = "worker"
+source = "backend"
+
+[services.variables]
+ENVIRONMENT = "production"
+
+[services.deploy]
+replicas = 1
+strategy = "rolling"
+startCommand = "celery -A app.celery_app worker --loglevel=info"
