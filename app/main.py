@@ -221,9 +221,8 @@ def detailed_health_check():
         # Database details
         try:
             from .database import SessionLocal
-            from sqlalchemy import text
             db = SessionLocal()
-            db.execute(text("SELECT 1"))
+            db.execute("SELECT 1")
             db.close()
             service_details["database"] = {
                 "status": "healthy",
