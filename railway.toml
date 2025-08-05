@@ -1,0 +1,21 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+restartPolicyType = "always"
+
+[[services]]
+name = "backend"
+source = "."
+
+[services.variables]
+PORT = "8000"
+ENVIRONMENT = "production"
+
+[services.healthcheck]
+path = "/health"
+timeout = 300
+
+[services.deploy]
+replicas = 1
+strategy = "rolling"
