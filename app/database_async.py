@@ -43,7 +43,6 @@ class AsyncDatabaseManager:
             if "postgresql" in database_url:
                 connect_args = {
                     "connect_timeout": 10,
-                    "command_timeout": 10,
                     "options": "-c statement_timeout=10000"
                 }
             
