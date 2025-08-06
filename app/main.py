@@ -38,7 +38,16 @@ app = FastAPI(
 @app.get("/healthz")
 async def healthz():
     """Railway health check - no dependencies, instant response"""
-    return {"status": "ok"}
+    return {"status": "ok", "platform": "railway"}
+
+@app.get("/health")
+async def health_check_simple():
+    """Simple health check that responds immediately without database dependencies"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "titletesterpro-api"
+    }
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,19 +104,10 @@ async def startup_event():
     # Start Firebase init in background
     asyncio.create_task(init_firebase_async())
     
-    # Initialize database connection (non-blocking)
-    try:
-        # Don't fail startup if database is unavailable
-        logger.info("🔄 Attempting database connection...")
-        from .database import ensure_database_initialized
-        ensure_database_initialized()
-        app.state.startup_status["database_available"] = True
-        logger.info("✅ Database initialized successfully")
-    except Exception as e:
-        logger.warning(f"⚠️ Database unavailable, continuing without DB: {str(e)[:100]}")
-        app.state.startup_status["database_available"] = False
-        app.state.startup_status["errors"].append(f"Database: {str(e)[:50]}")
-        # Continue startup anyway - app can work without database for health checks
+    # Initialize database with proper Railway pattern - don't block startup
+    logger.info("🔄 Skipping database initialization during startup to prevent blocking")
+    app.state.startup_status["database_available"] = False
+    app.state.startup_status["errors"].append("Database: Lazy initialization - will connect on first use")
     
     # Update status - app is ready to serve requests
     app.state.startup_status["status"] = "healthy"
