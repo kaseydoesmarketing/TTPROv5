@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y \
 # Install Poetry
 RUN pip install --upgrade pip && pip install poetry
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy poetry files and requirements.txt
+COPY pyproject.toml poetry.lock* requirements.txt ./
 
 # Configure Poetry for production
 ENV POETRY_VIRTUALENVS_CREATE=false \
@@ -25,11 +25,9 @@ ENV POETRY_VIRTUALENVS_CREATE=false \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Install dependencies - Handle lock file sync issues
-RUN poetry lock --no-update || echo "Lock file generation failed, continuing..." && \
-    poetry install --only=main --no-ansi || \
+# Install dependencies
+RUN poetry install --no-dev --no-ansi || \
     (echo "Fallback to pip install" && \
-     poetry export -f requirements.txt --output requirements.txt --only=main --without-hashes && \
      pip install -r requirements.txt)
 
 # Copy application code
