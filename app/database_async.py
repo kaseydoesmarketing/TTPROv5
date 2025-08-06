@@ -82,8 +82,9 @@ class AsyncDatabaseManager:
     async def _test_connection(self):
         """Test database connection in async context"""
         def _sync_test():
+            from sqlalchemy import text
             with self.engine.connect() as conn:
-                conn.execute("SELECT 1").fetchone()
+                conn.execute(text("SELECT 1")).fetchone()
         
         # Run sync operation in thread pool
         loop = asyncio.get_event_loop()
