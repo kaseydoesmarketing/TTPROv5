@@ -39,11 +39,11 @@ COPY start.sh .
 # Make start script executable
 RUN chmod +x start.sh
 
-# Use Railway's PORT
+# Use Railway's PORT  
 ENV PORT=${PORT:-8000}
 
-# Expose the port
-EXPOSE ${PORT}
+# Expose port 8000 (Railway auto-detects the actual port)
+EXPOSE 8000
 
 # Use start.sh which handles PORT correctly
 CMD ["./start.sh"]
