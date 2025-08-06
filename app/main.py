@@ -33,6 +33,13 @@ app = FastAPI(
     version="1.0.2"
 )
 
+# CRITICAL: Health check endpoint MUST be defined before ANY middleware
+# This ensures Railway can always reach it during deployment
+@app.get("/healthz")
+async def healthz():
+    """Railway health check - no dependencies, instant response"""
+    return {"status": "ok"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -52,38 +59,46 @@ async def startup_event():
     """Non-blocking startup - health endpoints available immediately"""
     logger.info("🚀 TitleTesterPro starting with non-blocking database connection...")
     
-    try:
-        # Initialize Firebase (fast, no database dependency)
-        initialize_firebase()
-        logger.info("✅ Firebase initialized")
-        
-        # Start database connection in background (non-blocking)
-        asyncio.create_task(start_database_connection())
-        logger.info("🔄 Database connection started in background")
-        
-        # Set initial status - app is ready even without database
-        app.state.startup_status = {
-            "status": "healthy",
-            "database_available": False,  # Will be updated by background task
-            "firebase_available": True,
-            "redis_available": False,
-            "errors": [],
-            "can_process_requests": True  # Can serve health endpoints immediately
-        }
-        
-        logger.info("✅ App startup completed - health endpoints ready")
-        
-    except Exception as e:
-        logger.error(f"❌ Startup error: {e}")
-        # Even on error, allow app to start for health checks
-        app.state.startup_status = {
-            "status": "degraded", 
-            "database_available": False,
-            "firebase_available": False,
-            "redis_available": False,
-            "errors": [str(e)],
-            "can_process_requests": True  # Still serve health endpoints
-        }
+    # Initialize startup status first - app can serve health checks immediately
+    app.state.startup_status = {
+        "status": "starting",
+        "database_available": False,
+        "firebase_available": False,
+        "redis_available": False,
+        "errors": [],
+        "can_process_requests": True,
+        "environment_safe": True  # Allow health checks even with missing env vars
+    }
+    
+    # Firebase initialization in background - don't block startup
+    async def init_firebase_async():
+        try:
+            # Add timeout to prevent hanging
+            await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, initialize_firebase),
+                timeout=5.0  # 5 second timeout
+            )
+            app.state.startup_status["firebase_available"] = True
+            logger.info("✅ Firebase initialized successfully")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ Firebase initialization timeout - continuing without Firebase")
+            app.state.startup_status["firebase_available"] = False
+            app.state.startup_status["errors"].append("Firebase: Initialization timeout")
+        except Exception as e:
+            logger.warning(f"⚠️ Firebase initialization failed: {e} - continuing without Firebase")
+            app.state.startup_status["firebase_available"] = False
+            app.state.startup_status["errors"].append(f"Firebase: {str(e)}")
+    
+    # Start Firebase init in background
+    asyncio.create_task(init_firebase_async())
+    
+    # Start database connection in background (non-blocking)
+    asyncio.create_task(start_database_connection())
+    logger.info("🔄 Database connection started in background")
+    
+    # Update status - app is ready to serve requests
+    app.state.startup_status["status"] = "healthy"
+    logger.info("✅ App startup completed - health endpoints ready")
 
 @app.get("/api/quota/usage")
 async def get_quota_usage(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
@@ -442,9 +457,6 @@ def job_health():
             "message": "Job health check system failure"
         }
 
-@app.get("/healthz")
-async def healthz():
-    return {"status": "ok"}
 
 
 class UserRegistrationRequest(BaseModel):
