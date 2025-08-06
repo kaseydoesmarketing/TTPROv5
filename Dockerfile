@@ -1,4 +1,4 @@
-# Single Railway service for TitleTesterPro backend
+# Railway service for TitleTesterPro backend - updated for sync
 FROM python:3.11-slim
 
 WORKDIR /app
