@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from .config import settings
-from .database import get_db
+from .database_async import get_db, get_db_optional, start_database_connection, is_database_ready
 from .firebase_auth import verify_firebase_token, initialize_firebase
 from .models import User
 from .ab_test_routes import router as ab_test_router
@@ -16,6 +16,7 @@ from .billing_routes import router as billing_router
 from .admin_routes import router as admin_router
 from .auth_dependencies import get_current_firebase_user
 import logging
+import asyncio
 import requests
 from firebase_admin import auth as firebase_auth
 import jwt
@@ -48,56 +49,41 @@ app.include_router(admin_router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Crash-proof startup that NEVER fails"""
+    """Non-blocking startup - health endpoints available immediately"""
+    logger.info("🚀 TitleTesterPro starting with non-blocking database connection...")
+    
     try:
-        logger.info("🚀 TitleTesterPro backend starting (crash-proof mode)...")
+        # Initialize Firebase (fast, no database dependency)
+        initialize_firebase()
+        logger.info("✅ Firebase initialized")
         
-        # Use safe startup manager
-        from .startup import run_startup_checks, startup_manager
-        status = run_startup_checks()
+        # Start database connection in background (non-blocking)
+        asyncio.create_task(start_database_connection())
+        logger.info("🔄 Database connection started in background")
         
-        # Store startup status globally for health checks
-        app.state.startup_status = status
+        # Set initial status - app is ready even without database
+        app.state.startup_status = {
+            "status": "healthy",
+            "database_available": False,  # Will be updated by background task
+            "firebase_available": True,
+            "redis_available": False,
+            "errors": [],
+            "can_process_requests": True  # Can serve health endpoints immediately
+        }
         
-        # Try database migrations only if database is available
-        if startup_manager.database_available:
-            try:
-                from sqlalchemy import text
-                from .database import SessionLocal, sync_engine
-                
-                logger.info("Running PostgreSQL migrations...")
-                migrations = [
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;",
-                ]
-                
-                with sync_engine.connect() as conn:
-                    for migration in migrations:
-                        try:
-                            conn.execute(text(migration))
-                        except Exception:
-                            pass  # Migration already exists
-                    conn.commit()
-                    
-                logger.info("✅ Database migrations completed")
-            except Exception as e:
-                logger.warning(f"⚠️ Database migrations failed: {e}")
-        
-        logger.info("✅ Backend startup completed successfully")
+        logger.info("✅ App startup completed - health endpoints ready")
         
     except Exception as e:
         logger.error(f"❌ Startup error: {e}")
-        # NEVER crash - always start in emergency mode
+        # Even on error, allow app to start for health checks
         app.state.startup_status = {
+            "status": "degraded", 
             "database_available": False,
-            "redis_available": False,
             "firebase_available": False,
-            "errors": [f"Startup exception: {str(e)}"],
-            "status": "emergency"
+            "redis_available": False,
+            "errors": [str(e)],
+            "can_process_requests": True  # Still serve health endpoints
         }
-        logger.warning("⚠️ Starting in emergency mode - basic functionality only")
 
 @app.get("/api/quota/usage")
 async def get_quota_usage(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
@@ -184,9 +170,9 @@ def health_check():
             "deployment_time": "2025-08-04T05:45:00Z",
             "environment": env_health,
             "services": {
-                "database": "available" if startup_status["database_available"] else "unavailable",
-                "redis": "available" if startup_status["redis_available"] else "unavailable", 
-                "firebase": "available" if startup_status["firebase_available"] else "unavailable"
+                "database": "available" if is_database_ready() else "connecting",
+                "redis": "available" if startup_status.get("redis_available", False) else "unavailable", 
+                "firebase": "available" if startup_status.get("firebase_available", False) else "unavailable"
             },
             "startup": {
                 "status": startup_status.get("status", "unknown"),
