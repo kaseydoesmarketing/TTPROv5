@@ -29,8 +29,8 @@ processed_auth_codes = set()
 
 app = FastAPI(
     title="TitleTesterPro API",
-    description="A SaaS platform for A/B testing YouTube titles - Railway Deployment Verified",
-    version="1.0.1"
+    description="A SaaS platform for A/B testing YouTube titles - Non-blocking Database",
+    version="1.0.2"
 )
 
 app.add_middleware(
