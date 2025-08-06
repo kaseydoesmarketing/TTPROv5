@@ -37,9 +37,10 @@ def get_session_local():
     return db_manager.SessionLocal
 
 # Legacy support - create engine and session for existing code
-ensure_database_initialized()
-sync_engine = get_engine()
-SessionLocal = get_session_local()
+# Note: Removed automatic initialization to prevent startup crashes
+# Database will be initialized on first use instead
+sync_engine = None
+SessionLocal = None
 
 # Export the robust get_db function
 __all__ = ['get_db', 'Base', 'sync_engine', 'SessionLocal', 'retry_on_database_error']

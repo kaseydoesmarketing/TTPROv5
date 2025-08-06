@@ -95,15 +95,19 @@ async def startup_event():
     # Start Firebase init in background
     asyncio.create_task(init_firebase_async())
     
-    # Initialize database connection
+    # Initialize database connection (non-blocking)
     try:
+        # Don't fail startup if database is unavailable
+        logger.info("🔄 Attempting database connection...")
         from .database import ensure_database_initialized
         ensure_database_initialized()
         app.state.startup_status["database_available"] = True
-        logger.info("✅ Database initialized")
+        logger.info("✅ Database initialized successfully")
     except Exception as e:
-        logger.warning(f"⚠️ Database initialization failed: {e}")
+        logger.warning(f"⚠️ Database unavailable, continuing without DB: {str(e)[:100]}")
         app.state.startup_status["database_available"] = False
+        app.state.startup_status["errors"].append(f"Database: {str(e)[:50]}")
+        # Continue startup anyway - app can work without database for health checks
     
     # Update status - app is ready to serve requests
     app.state.startup_status["status"] = "healthy"
