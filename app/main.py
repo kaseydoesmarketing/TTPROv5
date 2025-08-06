@@ -35,10 +35,15 @@ app = FastAPI(
 
 # CRITICAL: Health check endpoint MUST be defined before ANY middleware
 # This ensures Railway can always reach it during deployment
+@app.get("/")
+def root():
+    """Root endpoint for Render health checks"""
+    return {"status": "healthy", "service": "TitleTesterPro API", "platform": "render"}
+
 @app.get("/healthz")
-async def healthz():
-    """Railway health check - no dependencies, instant response"""
-    return {"status": "ok", "platform": "railway"}
+def healthz():
+    """Health check endpoint"""
+    return {"status": "ok"}
 
 @app.get("/health")
 async def health_check_simple():
