@@ -43,5 +43,8 @@ RUN chmod +x start.sh
 # Use Railway's PORT
 ENV PORT=${PORT:-8000}
 
+# Expose the port
+EXPOSE ${PORT}
+
 # Single service handles web + worker + beat
 CMD ["sh", "-c", "./start.sh"]
