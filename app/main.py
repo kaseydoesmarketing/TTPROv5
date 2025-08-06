@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from .config import settings
-from .database_async import get_db, get_db_optional, start_database_connection, is_database_ready
+from .database import get_db
 from .firebase_auth import verify_firebase_token, initialize_firebase
 from .models import User
 from .ab_test_routes import router as ab_test_router
@@ -57,7 +57,10 @@ app.include_router(admin_router)
 @app.on_event("startup")
 async def startup_event():
     """Non-blocking startup - health endpoints available immediately"""
-    logger.info("🚀 TitleTesterPro starting with non-blocking database connection...")
+    logger.info("🚀 TitleTesterPro starting with simplified database connection...")
+    logger.info(f"🔧 Environment: {settings.environment}")
+    logger.info(f"🔧 Database URL configured: {'Yes' if settings.database_url else 'No'}")
+    logger.info(f"🔧 Firebase Project ID: {settings.firebase_project_id[:10]}..." if settings.firebase_project_id else "Not set")
     
     # Initialize startup status first - app can serve health checks immediately
     app.state.startup_status = {
@@ -92,9 +95,15 @@ async def startup_event():
     # Start Firebase init in background
     asyncio.create_task(init_firebase_async())
     
-    # Start database connection in background (non-blocking)
-    asyncio.create_task(start_database_connection())
-    logger.info("🔄 Database connection started in background")
+    # Initialize database connection
+    try:
+        from .database import ensure_database_initialized
+        ensure_database_initialized()
+        app.state.startup_status["database_available"] = True
+        logger.info("✅ Database initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ Database initialization failed: {e}")
+        app.state.startup_status["database_available"] = False
     
     # Update status - app is ready to serve requests
     app.state.startup_status["status"] = "healthy"
@@ -185,7 +194,7 @@ def health_check():
             "deployment_time": "2025-08-04T05:45:00Z",
             "environment": env_health,
             "services": {
-                "database": "available" if is_database_ready() else "connecting",
+                "database": "available" if startup_status.get("database_available", False) else "unavailable",
                 "redis": "available" if startup_status.get("redis_available", False) else "unavailable", 
                 "firebase": "available" if startup_status.get("firebase_available", False) else "unavailable"
             },
