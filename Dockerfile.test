@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install minimal dependencies
+RUN pip install fastapi uvicorn
+
+# Copy test file
+COPY test_railway.py .
+
+# Use Railway's PORT
+ENV PORT=${PORT:-8000}
+
+# Start test server
+CMD ["python", "test_railway.py"]
