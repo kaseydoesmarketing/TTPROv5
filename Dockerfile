@@ -25,8 +25,9 @@ ENV POETRY_VIRTUALENVS_CREATE=false \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Install dependencies - FIXED POETRY COMMAND
-RUN poetry install --only=main --no-ansi || \
+# Install dependencies - Handle lock file sync issues
+RUN poetry lock --no-update || echo "Lock file generation failed, continuing..." && \
+    poetry install --only=main --no-ansi || \
     (echo "Fallback to pip install" && \
      poetry export -f requirements.txt --output requirements.txt --only=main --without-hashes && \
      pip install -r requirements.txt)
