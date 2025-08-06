@@ -30,12 +30,14 @@ RUN poetry install --no-dev --no-ansi || \
     (echo "Fallback to pip install" && \
      pip install -r requirements.txt)
 
-# Copy minimal test files only
-COPY test_main.py .
-COPY test_start.sh .
+# Copy application code
+COPY app/ ./app/
+COPY alembic.ini .
+COPY alembic/ ./alembic/
+COPY start.sh .
 
 # Make start script executable
-RUN chmod +x test_start.sh
+RUN chmod +x start.sh
 
 # Use Railway's PORT  
 ENV PORT=${PORT:-8000}
@@ -43,5 +45,5 @@ ENV PORT=${PORT:-8000}
 # Expose port 8000 (Railway auto-detects the actual port)
 EXPOSE 8000
 
-# Use minimal test script
-CMD ["./test_start.sh"]
+# Use start.sh which handles PORT correctly
+CMD ["./start.sh"]
