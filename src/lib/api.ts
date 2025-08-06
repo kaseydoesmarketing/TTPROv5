@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export class ApiClient {
   private async getAuthToken(): Promise<string | null> {
@@ -52,6 +52,16 @@ export class ApiClient {
     return this.fetchWithAuth('/channels', {
       method: 'POST',
       body: JSON.stringify(channelData),
+    });
+  }
+
+  async getChannelVideos(maxResults: number = 50) {
+    return this.fetchWithAuth(`/api/ab-tests/channel/videos?max_results=${maxResults}`);
+  }
+
+  async syncChannels() {
+    return this.fetchWithAuth('/api/channels/sync', {
+      method: 'POST',
     });
   }
 

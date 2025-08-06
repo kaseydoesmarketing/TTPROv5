@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { CreateTestModal } from './CreateTestModal';
 import { TestList } from './TestList';
 import { ChannelSelector } from './ChannelSelector';
+import { apiClient } from '../lib/api';
 
 export function Dashboard() {
   const { currentUser, logout } = useAuth();
@@ -34,22 +35,9 @@ export function Dashboard() {
         return;
       }
 
-      const token = await currentUser.getIdToken?.();
-      if (!token) {
-        console.error('Failed to get authentication token');
-        return;
-      }
-
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const tests = await response.json();
+      const tests = await apiClient.getABTests();
+      
+      if (tests && Array.isArray(tests)) {
         const activeTests = tests.filter((test: { status: string }) => test.status === 'active').length;
         const completedTests = tests.filter((test: { status: string }) => test.status === 'completed').length;
         

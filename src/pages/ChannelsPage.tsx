@@ -28,7 +28,7 @@ export function ChannelsPage() {
 
   const handleConnectChannel = () => {
     // In a real app, this would initiate OAuth flow
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/auth/oauth/initiate`;
+    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/auth/oauth/initiate`;
   };
 
   if (loading) {

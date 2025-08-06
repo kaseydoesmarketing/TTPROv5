@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { VideoSelector } from './VideoSelector';
 import { DateTimePicker } from './DateTimePicker';
+import { apiClient } from '../lib/api';
 
 interface CreateTestModalProps {
   isOpen: boolean;
@@ -10,7 +10,6 @@ interface CreateTestModalProps {
 }
 
 export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestModalProps) {
-  const { getAuthToken } = useAuth();
   const [formData, setFormData] = useState({
     videoId: '',
     videoTitle: '',
@@ -56,31 +55,18 @@ export function CreateTestModal({ isOpen, onClose, onTestCreated }: CreateTestMo
     setError('');
 
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
+      const testData = {
+        video_id: formData.videoId,
+        title_variants: formData.titleVariants.filter(variant => variant.trim() !== ''),
+        test_duration_hours: formData.startTime && formData.endTime 
+          ? Math.ceil((formData.endTime.getTime() - formData.startTime.getTime()) / (1000 * 60 * 60))
+          : 24,
+        rotation_interval_hours: formData.rotationIntervalHours,
+        start_time: formData.startTime?.toISOString(),
+        end_time: formData.endTime?.toISOString()
+      };
 
-      const response = await fetch(`${apiUrl}/api/ab-tests/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          video_id: formData.videoId,
-          title_variants: formData.titleVariants.filter(variant => variant.trim() !== ''),
-          test_duration_hours: formData.startTime && formData.endTime 
-            ? Math.ceil((formData.endTime.getTime() - formData.startTime.getTime()) / (1000 * 60 * 60))
-            : 24,
-          rotation_interval_hours: formData.rotationIntervalHours,
-          start_time: formData.startTime?.toISOString(),
-          end_time: formData.endTime?.toISOString()
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create test');
-      }
+      await apiClient.createABTest(testData);
 
       onTestCreated();
       onClose();

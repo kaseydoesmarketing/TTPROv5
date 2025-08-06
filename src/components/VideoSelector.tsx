@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { apiClient } from '../lib/api';
 
 interface Video {
   id: string;
@@ -18,7 +18,6 @@ interface VideoSelectorProps {
 }
 
 export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }: VideoSelectorProps) {
-  const { getAuthToken } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -35,22 +34,7 @@ export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }
     setError('');
     
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-      
-      const response = await fetch(`${apiUrl}/api/ab-tests/channel/videos?max_results=50`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch videos');
-      }
-
-      const data = await response.json();
+      const data = await apiClient.getChannelVideos(50);
       setVideos(data.videos || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
