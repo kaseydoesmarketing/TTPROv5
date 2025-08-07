@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Firebase Auth</title>
+</head>
+<body>
+    <h1>Testing Firebase Authentication</h1>
+    <div id="status"></div>
+    <button onclick="testAuth()">Test Authentication</button>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAuXPhkFHX5NG3B74bs-zuBG3xmCO1h1RQ",
+            authDomain: "titletesterpro.firebaseapp.com",
+            projectId: "titletesterpro",
+            storageBucket: "titletesterpro.appspot.com",
+            messagingSenderId: "618794070994",
+            appId: "1:618794070994:web:154fb461d986c434eece0b"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        window.testAuth = async function() {
+            const status = document.getElementById('status');
+            try {
+                status.innerHTML = '<p>Testing Firebase configuration...</p>';
+                
+                // Test if Firebase is initialized
+                status.innerHTML += '<p>✅ Firebase initialized successfully</p>';
+                
+                // Try to sign in
+                status.innerHTML += '<p>Opening authentication popup...</p>';
+                const result = await signInWithPopup(auth, provider);
+                status.innerHTML += '<p>✅ Authentication successful! User: ' + result.user.email + '</p>';
+            } catch (error) {
+                status.innerHTML += '<p>❌ Error: ' + error.code + ' - ' + error.message + '</p>';
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Initial status
+        document.getElementById('status').innerHTML = '<p>Firebase app initialized. Click button to test authentication.</p>';
+    </script>
+</body>
+</html>
