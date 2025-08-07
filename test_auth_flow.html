@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auth Flow</title>
+</head>
+<body>
+    <h1>Test Authentication Flow</h1>
+    <div id="status"></div>
+    <button id="testBtn" onclick="testFlow()">Test Full Flow</button>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAuXPhkFHX5NG3B74bs-zuBG3xmCO1h1RQ",
+            authDomain: "titletesterpro.firebaseapp.com",
+            projectId: "titletesterpro",
+            storageBucket: "titletesterpro.appspot.com",
+            messagingSenderId: "618794070994",
+            appId: "1:618794070994:web:154fb461d986c434eece0b"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        window.testFlow = async function() {
+            const status = document.getElementById('status');
+            try {
+                status.innerHTML = '<p>1. Starting Google sign-in...</p>';
+                
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                status.innerHTML += '<p>✅ 2. Google sign-in successful</p>';
+                
+                // Get Firebase token
+                const token = await user.getIdToken();
+                status.innerHTML += '<p>✅ 3. Firebase token obtained</p>';
+                
+                // Test backend registration
+                status.innerHTML += '<p>4. Testing backend registration...</p>';
+                const response = await fetch('https://ttprov4-k58o.onrender.com/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        access_token: result._tokenResponse?.accessToken,
+                        refresh_token: result._tokenResponse?.refreshToken
+                    })
+                });
+                
+                if (response.ok) {
+                    status.innerHTML += '<p>✅ 5. Backend registration successful</p>';
+                    
+                    // Test API call
+                    status.innerHTML += '<p>6. Testing API call...</p>';
+                    const apiResponse = await fetch('https://ttprov4-k58o.onrender.com/api/channels/', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    if (apiResponse.ok) {
+                        const data = await apiResponse.json();
+                        status.innerHTML += '<p>✅ 7. API call successful</p>';
+                        status.innerHTML += '<p><strong>SUCCESS! Everything is working!</strong></p>';
+                    } else {
+                        status.innerHTML += `<p>❌ 7. API call failed: ${apiResponse.status}</p>`;
+                    }
+                } else {
+                    const errorData = await response.json();
+                    status.innerHTML += `<p>❌ 5. Backend registration failed: ${JSON.stringify(errorData)}</p>`;
+                }
+                
+            } catch (error) {
+                status.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+                console.error('Full error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+INFO:     Will watch for changes in these directories: ['/Users/kvimedia/TTPROv4/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [74524] using StatReload
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [74535]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 16:49:16,486 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 16:49:16,486 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 16:49:16,486 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 16:49:16,487 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+INFO:     127.0.0.1:59008 - "GET /health HTTP/1.1" 200 OK
+INFO:app.auth_dependencies:AUTH: Received token: test-token...
+2025-08-01 16:49:26,441 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 16:49:26,442 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.firebase_uid AS users_firebase_uid, users.email AS users_email, users.display_name AS users_display_name, users.photo_url AS users_photo_url, users.google_access_token AS users_google_access_token, users.google_refresh_token AS users_google_refresh_token, users.token_expires_at AS users_token_expires_at, users.youtube_channel_id AS users_youtube_channel_id, users.youtube_channel_title AS users_youtube_channel_title, users.stripe_customer_id AS users_stripe_customer_id, users.subscription_status AS users_subscription_status, users.subscription_plan AS users_subscription_plan, users.subscription_period_end AS users_subscription_period_end, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.is_active AS users_is_active 
+FROM users 
+WHERE users.email IN (?, ?, ?)
+ LIMIT ? OFFSET ?
+INFO:sqlalchemy.engine.Engine:SELECT users.id AS users_id, users.firebase_uid AS users_firebase_uid, users.email AS users_email, users.display_name AS users_display_name, users.photo_url AS users_photo_url, users.google_access_token AS users_google_access_token, users.google_refresh_token AS users_google_refresh_token, users.token_expires_at AS users_token_expires_at, users.youtube_channel_id AS users_youtube_channel_id, users.youtube_channel_title AS users_youtube_channel_title, users.stripe_customer_id AS users_stripe_customer_id, users.subscription_status AS users_subscription_status, users.subscription_plan AS users_subscription_plan, users.subscription_period_end AS users_subscription_period_end, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.is_active AS users_is_active 
+FROM users 
+WHERE users.email IN (?, ?, ?)
+ LIMIT ? OFFSET ?
+2025-08-01 16:49:26,442 INFO sqlalchemy.engine.Engine [generated in 0.00011s] ('liftedkulture@gmail.com', 'liftedkulture-6202@pages.plusgoogle.com', 'Shemeka.womenofexcellence@gmail.com', 1, 0)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00011s] ('liftedkulture@gmail.com', 'liftedkulture-6202@pages.plusgoogle.com', 'Shemeka.womenofexcellence@gmail.com', 1, 0)
+INFO:app.auth_dependencies:AUTH: Found authorized user: liftedkulture-6202@pages.plusgoogle.com
+INFO:app.auth_dependencies:TEMPORARY: Allowing access for authorized user liftedkulture-6202@pages.plusgoogle.com
+INFO:app.auth_dependencies:User token status - has_valid_tokens: False, needs_refresh: True
+INFO:app.auth_dependencies:User token expiry: 2025-08-01 13:52:14.366658
+INFO:app.ab_test_routes:Starting channel videos fetch for user da14f18a-b703-4af1-8ac4-8ba74af6a990
+INFO:app.ab_test_routes:Checking user email: 'liftedkulture-6202@pages.plusgoogle.com' against authorized emails: ['liftedkulture@gmail.com', 'liftedkulture-6202@pages.plusgoogle.com', 'Shemeka.womenofexcellence@gmail.com']
+INFO:app.ab_test_routes:Bypassing token refresh for authorized user liftedkulture-6202@pages.plusgoogle.com
+WARNING:app.models:User da14f18a-b703-4af1-8ac4-8ba74af6a990 access token is expired (expires at: 2025-08-01 13:52:14.366658)
+2025-08-01 16:49:26,445 INFO sqlalchemy.engine.Engine SELECT youtube_channels.id AS youtube_channels_id, youtube_channels.user_id AS youtube_channels_user_id, youtube_channels.channel_id AS youtube_channels_channel_id, youtube_channels.channel_title AS youtube_channels_channel_title, youtube_channels.channel_description AS youtube_channels_channel_description, youtube_channels.subscriber_count AS youtube_channels_subscriber_count, youtube_channels.video_count AS youtube_channels_video_count, youtube_channels.view_count AS youtube_channels_view_count, youtube_channels.thumbnail_url AS youtube_channels_thumbnail_url, youtube_channels.custom_url AS youtube_channels_custom_url, youtube_channels.is_active AS youtube_channels_is_active, youtube_channels.is_selected AS youtube_channels_is_selected, youtube_channels.created_at AS youtube_channels_created_at, youtube_channels.updated_at AS youtube_channels_updated_at 
+FROM youtube_channels 
+WHERE youtube_channels.user_id = ? AND youtube_channels.is_selected = 1
+ LIMIT ? OFFSET ?
+INFO:sqlalchemy.engine.Engine:SELECT youtube_channels.id AS youtube_channels_id, youtube_channels.user_id AS youtube_channels_user_id, youtube_channels.channel_id AS youtube_channels_channel_id, youtube_channels.channel_title AS youtube_channels_channel_title, youtube_channels.channel_description AS youtube_channels_channel_description, youtube_channels.subscriber_count AS youtube_channels_subscriber_count, youtube_channels.video_count AS youtube_channels_video_count, youtube_channels.view_count AS youtube_channels_view_count, youtube_channels.thumbnail_url AS youtube_channels_thumbnail_url, youtube_channels.custom_url AS youtube_channels_custom_url, youtube_channels.is_active AS youtube_channels_is_active, youtube_channels.is_selected AS youtube_channels_is_selected, youtube_channels.created_at AS youtube_channels_created_at, youtube_channels.updated_at AS youtube_channels_updated_at 
+FROM youtube_channels 
+WHERE youtube_channels.user_id = ? AND youtube_channels.is_selected = 1
+ LIMIT ? OFFSET ?
+2025-08-01 16:49:26,445 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ('da14f18a-b703-4af1-8ac4-8ba74af6a990', 1, 0)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00009s] ('da14f18a-b703-4af1-8ac4-8ba74af6a990', 1, 0)
+INFO:googleapiclient.discovery_cache:file_cache is only supported with oauth2client<4.0.0
+INFO:google_auth_httplib2:Refreshing credentials due to a 401 response. Attempt 1/2.
+ERROR:app.youtube_api:Error fetching channel videos for channel UClEIMEKt75sjA3dxSiCcx-w: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+Traceback (most recent call last):
+  File "/Users/kvimedia/TTPROv4/backend/app/youtube_api.py", line 89, in get_channel_videos
+    channels_response = channels_request.execute()
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 923, in execute
+    resp, content = _retry_request(
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 191, in _retry_request
+    resp, content = http.request(uri, method, *args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google_auth_httplib2.py", line 245, in request
+    self.credentials.refresh(self._request)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google/oauth2/credentials.py", line 397, in refresh
+    raise exceptions.RefreshError(
+google.auth.exceptions.RefreshError: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+ERROR:app.ab_test_routes:Error fetching channel videos for user da14f18a-b703-4af1-8ac4-8ba74af6a990: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+Traceback (most recent call last):
+  File "/Users/kvimedia/TTPROv4/backend/app/ab_test_routes.py", line 516, in get_channel_videos
+    videos = await youtube_client.get_channel_videos(channel_id, access_token, max_results)
+  File "/Users/kvimedia/TTPROv4/backend/app/youtube_api.py", line 89, in get_channel_videos
+    channels_response = channels_request.execute()
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 923, in execute
+    resp, content = _retry_request(
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 191, in _retry_request
+    resp, content = http.request(uri, method, *args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google_auth_httplib2.py", line 245, in request
+    self.credentials.refresh(self._request)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google/oauth2/credentials.py", line 397, in refresh
+    raise exceptions.RefreshError(
+google.auth.exceptions.RefreshError: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+2025-08-01 16:49:26,552 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:     127.0.0.1:59045 - "GET /api/ab-tests/channel/videos HTTP/1.1" 500 Internal Server Error
+INFO:app.auth_dependencies:AUTH: Received token: real-firebase-token...
+2025-08-01 16:49:35,352 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 16:49:35,352 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.firebase_uid AS users_firebase_uid, users.email AS users_email, users.display_name AS users_display_name, users.photo_url AS users_photo_url, users.google_access_token AS users_google_access_token, users.google_refresh_token AS users_google_refresh_token, users.token_expires_at AS users_token_expires_at, users.youtube_channel_id AS users_youtube_channel_id, users.youtube_channel_title AS users_youtube_channel_title, users.stripe_customer_id AS users_stripe_customer_id, users.subscription_status AS users_subscription_status, users.subscription_plan AS users_subscription_plan, users.subscription_period_end AS users_subscription_period_end, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.is_active AS users_is_active 
+FROM users 
+WHERE users.email IN (?, ?, ?)
+ LIMIT ? OFFSET ?
+INFO:sqlalchemy.engine.Engine:SELECT users.id AS users_id, users.firebase_uid AS users_firebase_uid, users.email AS users_email, users.display_name AS users_display_name, users.photo_url AS users_photo_url, users.google_access_token AS users_google_access_token, users.google_refresh_token AS users_google_refresh_token, users.token_expires_at AS users_token_expires_at, users.youtube_channel_id AS users_youtube_channel_id, users.youtube_channel_title AS users_youtube_channel_title, users.stripe_customer_id AS users_stripe_customer_id, users.subscription_status AS users_subscription_status, users.subscription_plan AS users_subscription_plan, users.subscription_period_end AS users_subscription_period_end, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.is_active AS users_is_active 
+FROM users 
+WHERE users.email IN (?, ?, ?)
+ LIMIT ? OFFSET ?
+2025-08-01 16:49:35,352 INFO sqlalchemy.engine.Engine [cached since 8.91s ago] ('liftedkulture@gmail.com', 'liftedkulture-6202@pages.plusgoogle.com', 'Shemeka.womenofexcellence@gmail.com', 1, 0)
+INFO:sqlalchemy.engine.Engine:[cached since 8.91s ago] ('liftedkulture@gmail.com', 'liftedkulture-6202@pages.plusgoogle.com', 'Shemeka.womenofexcellence@gmail.com', 1, 0)
+INFO:app.auth_dependencies:AUTH: Found authorized user: liftedkulture-6202@pages.plusgoogle.com
+INFO:app.auth_dependencies:TEMPORARY: Allowing access for authorized user liftedkulture-6202@pages.plusgoogle.com
+INFO:app.auth_dependencies:User token status - has_valid_tokens: False, needs_refresh: True
+INFO:app.auth_dependencies:User token expiry: 2025-08-01 13:52:14.366658
+INFO:app.ab_test_routes:Starting channel videos fetch for user da14f18a-b703-4af1-8ac4-8ba74af6a990
+INFO:app.ab_test_routes:Checking user email: 'liftedkulture-6202@pages.plusgoogle.com' against authorized emails: ['liftedkulture@gmail.com', 'liftedkulture-6202@pages.plusgoogle.com', 'Shemeka.womenofexcellence@gmail.com']
+INFO:app.ab_test_routes:Bypassing token refresh for authorized user liftedkulture-6202@pages.plusgoogle.com
+WARNING:app.models:User da14f18a-b703-4af1-8ac4-8ba74af6a990 access token is expired (expires at: 2025-08-01 13:52:14.366658)
+2025-08-01 16:49:35,353 INFO sqlalchemy.engine.Engine SELECT youtube_channels.id AS youtube_channels_id, youtube_channels.user_id AS youtube_channels_user_id, youtube_channels.channel_id AS youtube_channels_channel_id, youtube_channels.channel_title AS youtube_channels_channel_title, youtube_channels.channel_description AS youtube_channels_channel_description, youtube_channels.subscriber_count AS youtube_channels_subscriber_count, youtube_channels.video_count AS youtube_channels_video_count, youtube_channels.view_count AS youtube_channels_view_count, youtube_channels.thumbnail_url AS youtube_channels_thumbnail_url, youtube_channels.custom_url AS youtube_channels_custom_url, youtube_channels.is_active AS youtube_channels_is_active, youtube_channels.is_selected AS youtube_channels_is_selected, youtube_channels.created_at AS youtube_channels_created_at, youtube_channels.updated_at AS youtube_channels_updated_at 
+FROM youtube_channels 
+WHERE youtube_channels.user_id = ? AND youtube_channels.is_selected = 1
+ LIMIT ? OFFSET ?
+INFO:sqlalchemy.engine.Engine:SELECT youtube_channels.id AS youtube_channels_id, youtube_channels.user_id AS youtube_channels_user_id, youtube_channels.channel_id AS youtube_channels_channel_id, youtube_channels.channel_title AS youtube_channels_channel_title, youtube_channels.channel_description AS youtube_channels_channel_description, youtube_channels.subscriber_count AS youtube_channels_subscriber_count, youtube_channels.video_count AS youtube_channels_video_count, youtube_channels.view_count AS youtube_channels_view_count, youtube_channels.thumbnail_url AS youtube_channels_thumbnail_url, youtube_channels.custom_url AS youtube_channels_custom_url, youtube_channels.is_active AS youtube_channels_is_active, youtube_channels.is_selected AS youtube_channels_is_selected, youtube_channels.created_at AS youtube_channels_created_at, youtube_channels.updated_at AS youtube_channels_updated_at 
+FROM youtube_channels 
+WHERE youtube_channels.user_id = ? AND youtube_channels.is_selected = 1
+ LIMIT ? OFFSET ?
+2025-08-01 16:49:35,353 INFO sqlalchemy.engine.Engine [cached since 8.909s ago] ('da14f18a-b703-4af1-8ac4-8ba74af6a990', 1, 0)
+INFO:sqlalchemy.engine.Engine:[cached since 8.909s ago] ('da14f18a-b703-4af1-8ac4-8ba74af6a990', 1, 0)
+INFO:googleapiclient.discovery_cache:file_cache is only supported with oauth2client<4.0.0
+INFO:google_auth_httplib2:Refreshing credentials due to a 401 response. Attempt 1/2.
+ERROR:app.youtube_api:Error fetching channel videos for channel UClEIMEKt75sjA3dxSiCcx-w: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+Traceback (most recent call last):
+  File "/Users/kvimedia/TTPROv4/backend/app/youtube_api.py", line 89, in get_channel_videos
+    channels_response = channels_request.execute()
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 923, in execute
+    resp, content = _retry_request(
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 191, in _retry_request
+    resp, content = http.request(uri, method, *args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google_auth_httplib2.py", line 245, in request
+    self.credentials.refresh(self._request)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google/oauth2/credentials.py", line 397, in refresh
+    raise exceptions.RefreshError(
+google.auth.exceptions.RefreshError: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+ERROR:app.ab_test_routes:Error fetching channel videos for user da14f18a-b703-4af1-8ac4-8ba74af6a990: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+Traceback (most recent call last):
+  File "/Users/kvimedia/TTPROv4/backend/app/ab_test_routes.py", line 516, in get_channel_videos
+    videos = await youtube_client.get_channel_videos(channel_id, access_token, max_results)
+  File "/Users/kvimedia/TTPROv4/backend/app/youtube_api.py", line 89, in get_channel_videos
+    channels_response = channels_request.execute()
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 923, in execute
+    resp, content = _retry_request(
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/googleapiclient/http.py", line 191, in _retry_request
+    resp, content = http.request(uri, method, *args, **kwargs)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google_auth_httplib2.py", line 245, in request
+    self.credentials.refresh(self._request)
+  File "/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/google/oauth2/credentials.py", line 397, in refresh
+    raise exceptions.RefreshError(
+google.auth.exceptions.RefreshError: The credentials do not contain the necessary fields need to refresh the access token. You must specify refresh_token, token_uri, client_id, and client_secret.
+2025-08-01 16:49:35,441 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:     127.0.0.1:59105 - "GET /api/ab-tests/channel/videos HTTP/1.1" 500 Internal Server Error
+ERROR:app.firebase_auth:Invalid ID token: Wrong number of segments in token: b'test-token'
+ERROR:app.main:Token verification failed during revocation: Invalid or expired token: Wrong number of segments in token: b'test-token'
+INFO:     127.0.0.1:59393 - "POST /auth/revoke HTTP/1.1" 401 Unauthorized
+WARNING:  StatReload detected changes in 'app/ab_test_routes.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [74535]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [77394]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:17:27,902 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:17:27,902 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:17:27,902 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:17:27,902 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:17:27,903 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:17:27,903 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:17:27,903 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:17:27,903 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:17:27,903 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:17:27,903 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/ab_test_routes.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [77394]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [77437]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:18:03,667 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:18:03,667 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:18:03,667 INFO sqlalchemy.engine.Engine [generated in 0.00011s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00011s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:03,667 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:18:03,667 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:03,668 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:18:03,668 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:03,668 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:18:03,668 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:03,668 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/services/token_refresh.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [77437]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [77476]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00009s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:18:19,479 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:19,480 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/services/token_refresh.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [77476]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [77547]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:18:41,461 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:18:41,461 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:18:41,461 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:41,461 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:18:41,461 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:41,462 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:18:41,462 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:41,462 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:18:41,462 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:18:41,462 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/services/token_refresh.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [77547]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [78251]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:24:43,249 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:24:43,249 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:24:43,249 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:24:43,249 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:24:43,249 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:24:43,250 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:24:43,250 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:24:43,250 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:24:43,250 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:24:43,250 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+INFO:     127.0.0.1:51945 - "GET /health HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'app/auth_dependencies.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [78251]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [79527]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:41:40,496 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:41:40,497 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:41:40,497 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:41:40,497 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/auth_dependencies.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [79527]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [79551]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:42:00,754 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:42:00,755 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/auth_dependencies.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [79551]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [80758]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine [generated in 0.00011s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00011s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:54:00,479 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:00,480 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:54:00,480 INFO sqlalchemy.engine.Engine [generated in 0.00003s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00003s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:00,480 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/auth_dependencies.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [80758]
+/Users/kvimedia/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:     Started server process [80773]
+INFO:     Waiting for application startup.
+INFO:app.firebase_auth:Firebase Admin SDK initialized successfully
+INFO:app.main:Firebase Admin SDK initialized successfully
+INFO:app.main:Running PostgreSQL migration for Stripe columns...
+2025-08-01 17:54:21,520 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-08-01 17:54:21,520 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;
+2025-08-01 17:54:21,520 INFO sqlalchemy.engine.Engine [generated in 0.00013s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00013s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:21,520 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';
+2025-08-01 17:54:21,520 INFO sqlalchemy.engine.Engine [generated in 0.00005s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00005s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:21,521 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';
+2025-08-01 17:54:21,521 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR DEFAULT 'free';]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:21,521 INFO sqlalchemy.engine.Engine ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+INFO:sqlalchemy.engine.Engine:ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;
+2025-08-01 17:54:21,521 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+INFO:app.main:Migration may already exist: (sqlite3.OperationalError) near "EXISTS": syntax error
+[SQL: ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMP;]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-01 17:54:21,521 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:app.main:PostgreSQL migration completed successfully
+INFO:app.main:Application startup completed successfully
+INFO:     Application startup complete.

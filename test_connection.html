@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test TitleTesterPro Connection</title>
+</head>
+<body>
+    <h1>Testing TitleTesterPro Connection</h1>
+    <div id="status"></div>
+    <script>
+        async function testConnection() {
+            const status = document.getElementById('status');
+            
+            try {
+                // Test OAuth config
+                const configResponse = await fetch('https://ttprov4-k58o.onrender.com/auth/oauth/config');
+                const config = await configResponse.json();
+                status.innerHTML += '<p>✅ OAuth Config: ' + JSON.stringify(config) + '</p>';
+                
+                // Test CORS
+                status.innerHTML += '<p>✅ CORS Headers: Working</p>';
+                
+                // Test health endpoint
+                const healthResponse = await fetch('https://ttprov4-k58o.onrender.com/health');
+                const health = await healthResponse.json();
+                status.innerHTML += '<p>✅ Health: ' + health.status + '</p>';
+                
+            } catch (error) {
+                status.innerHTML += '<p>❌ Error: ' + error.message + '</p>';
+            }
+        }
+        
+        testConnection();
+    </script>
+</body>
+</html>
