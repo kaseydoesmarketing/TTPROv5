@@ -29,8 +29,8 @@ processed_auth_codes = set()
 
 app = FastAPI(
     title="TitleTesterPro API",
-    description="A SaaS platform for A/B testing YouTube titles - Non-blocking Database",
-    version="1.0.2"
+    description="A SaaS platform for A/B testing YouTube titles - Render Deployment",
+    version="1.0.3"
 )
 
 # CRITICAL: Health check endpoint MUST be defined before ANY middleware
