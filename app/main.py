@@ -8,6 +8,7 @@ from typing import Optional
 from datetime import datetime
 from .config import settings
 from .database import get_db
+from .database_manager import db_manager
 from .firebase_auth import verify_firebase_token, initialize_firebase
 from .models import User
 from .ab_test_routes import router as ab_test_router
@@ -30,7 +31,7 @@ processed_auth_codes = set()
 app = FastAPI(
     title="TitleTesterPro API",
     description="A SaaS platform for A/B testing YouTube titles - Render Deployment",
-    version="1.0.6"
+    version="1.0.7"
 )
 
 # CRITICAL: Health check endpoint MUST be defined before ANY middleware
@@ -139,10 +140,28 @@ async def startup_event():
     # Start Firebase init in background
     asyncio.create_task(init_firebase_async())
     
-    # Initialize database with proper Railway pattern - don't block startup
-    logger.info("🔄 Skipping database initialization during startup to prevent blocking")
-    app.state.startup_status["database_available"] = False
-    app.state.startup_status["errors"].append("Database: Lazy initialization - will connect on first use")
+    # Initialize database with proper Render pattern
+    async def init_database_async():
+        try:
+            logger.info("🔄 Initializing database connection...")
+            success = await asyncio.get_event_loop().run_in_executor(
+                None, 
+                lambda: db_manager.create_engine_with_retry()
+            )
+            if success:
+                app.state.startup_status["database_available"] = True
+                logger.info("✅ Database initialized successfully")
+            else:
+                app.state.startup_status["database_available"] = False
+                app.state.startup_status["errors"].append("Database: Failed to initialize connection")
+                logger.error("❌ Database initialization failed")
+        except Exception as e:
+            logger.error(f"❌ Database initialization error: {e}")
+            app.state.startup_status["database_available"] = False
+            app.state.startup_status["errors"].append(f"Database: {str(e)}")
+    
+    # Start database init in background
+    asyncio.create_task(init_database_async())
     
     # Update status - app is ready to serve requests
     app.state.startup_status["status"] = "healthy"
