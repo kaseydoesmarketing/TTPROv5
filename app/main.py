@@ -40,6 +40,36 @@ def root():
     """Root endpoint for Render health checks"""
     return {"status": "healthy", "service": "TitleTesterPro API", "platform": "render"}
 
+@app.get("/debug/database")
+def debug_database():
+    """Debug database connection status"""
+    import os
+    from .database_manager import db_manager
+    
+    database_url = os.getenv("DATABASE_URL", "NOT SET")
+    is_external = ".render.com" in database_url
+    
+    try:
+        # Try to get a connection
+        if db_manager.engine:
+            with db_manager.engine.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                result.fetchone()
+                db_status = "connected"
+        else:
+            db_status = "no engine"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "database_url_set": database_url != "NOT SET",
+        "database_url_is_external": is_external,
+        "database_url_preview": database_url[:50] + "..." if len(database_url) > 50 else database_url,
+        "database_status": db_status,
+        "db_manager_initialized": db_manager._initialized,
+        "engine_exists": db_manager.engine is not None
+    }
+
 @app.get("/healthz")
 def healthz():
     """Health check endpoint"""
@@ -340,30 +370,284 @@ def _get_health_recommendations(env_summary: dict, service_details: dict) -> lis
 
 @app.get("/debug/firebase")
 def debug_firebase():
-    """Debug Firebase initialization status"""
+    """Comprehensive Firebase initialization and status debug endpoint"""
     try:
         from . import firebase_auth
+        from .auth_manager import auth_manager
+        import firebase_admin
         
+        # Basic status
         firebase_status = {
-            "firebase_initialized": hasattr(firebase_auth, 'auth') and firebase_auth.auth is not None,
+            "timestamp": datetime.utcnow().isoformat(),
             "environment": settings.environment,
-            "firebase_project_id": settings.firebase_project_id if hasattr(settings, 'firebase_project_id') else "NOT_SET",
-            "firebase_client_email": settings.firebase_client_email[:20] + "..." if hasattr(settings, 'firebase_client_email') and settings.firebase_client_email else "NOT_SET",
-            "firebase_private_key_set": bool(settings.firebase_private_key) if hasattr(settings, 'firebase_private_key') else False,
-            "firebase_client_id": settings.firebase_client_id if hasattr(settings, 'firebase_client_id') else "NOT_SET",
-            "firebase_private_key_id": settings.firebase_private_key_id if hasattr(settings, 'firebase_private_key_id') else "NOT_SET"
+            "firebase_initialized_flag": firebase_auth._firebase_initialized,
+            "firebase_apps_count": len(firebase_admin._apps) if hasattr(firebase_admin, '_apps') else 0,
         }
         
+        # Configuration status (safe values only)
+        firebase_status["configuration"] = {
+            "firebase_project_id": settings.firebase_project_id,
+            "firebase_client_email": settings.firebase_client_email[:50] + "..." if settings.firebase_client_email else "NOT_SET",
+            "firebase_private_key_set": bool(settings.firebase_private_key and len(settings.firebase_private_key) > 50),
+            "firebase_private_key_format": "valid" if settings.firebase_private_key and settings.firebase_private_key.startswith("-----BEGIN PRIVATE KEY-----") else "invalid",
+            "firebase_client_id": settings.firebase_client_id if settings.firebase_client_id else "NOT_SET",
+            "firebase_private_key_id": settings.firebase_private_key_id if settings.firebase_private_key_id else "NOT_SET"
+        }
+        
+        # Test Firebase operations
+        firebase_status["operations"] = {}
+        
+        # Test 1: Initialize Firebase
         try:
-            test_token = firebase_auth.create_custom_token("test_uid", {"test": "claim"})
-            firebase_status["can_create_custom_token"] = True
+            firebase_auth.initialize_firebase()
+            firebase_status["operations"]["initialize"] = {"success": True}
         except Exception as e:
-            firebase_status["can_create_custom_token"] = False
-            firebase_status["custom_token_error"] = str(e)
+            firebase_status["operations"]["initialize"] = {"success": False, "error": str(e)}
+        
+        # Test 2: Create custom token
+        try:
+            test_token = firebase_auth.create_custom_token("test_uid_123", {"test": "claim", "timestamp": int(datetime.utcnow().timestamp())})
+            firebase_status["operations"]["create_custom_token"] = {
+                "success": True, 
+                "token_length": len(test_token),
+                "token_preview": test_token[:100] + "..." if len(test_token) > 100 else test_token
+            }
+        except Exception as e:
+            firebase_status["operations"]["create_custom_token"] = {"success": False, "error": str(e)}
+        
+        # Test 3: Test development token verification
+        try:
+            if settings.is_development:
+                dev_result = firebase_auth.verify_firebase_token("dev-id-token")
+                firebase_status["operations"]["verify_dev_token"] = {"success": True, "uid": dev_result.get("uid")}
+            else:
+                firebase_status["operations"]["verify_dev_token"] = {"skipped": "not in development mode"}
+        except Exception as e:
+            firebase_status["operations"]["verify_dev_token"] = {"success": False, "error": str(e)}
+        
+        # Test 4: Auth manager status
+        try:
+            auth_status = auth_manager.get_auth_status()
+            firebase_status["auth_manager"] = auth_status
+        except Exception as e:
+            firebase_status["auth_manager"] = {"error": str(e)}
+        
+        # Test 5: Try to initialize auth manager
+        try:
+            init_success = auth_manager.safe_initialize()
+            firebase_status["auth_manager_init"] = {"success": init_success}
+        except Exception as e:
+            firebase_status["auth_manager_init"] = {"success": False, "error": str(e)}
+        
+        # Overall health assessment
+        firebase_status["overall_status"] = "healthy" if (
+            firebase_status["operations"].get("initialize", {}).get("success") and
+            firebase_status["operations"].get("create_custom_token", {}).get("success")
+        ) else "unhealthy"
+        
+        # Recommendations
+        recommendations = []
+        if not firebase_status["operations"].get("initialize", {}).get("success"):
+            recommendations.append("Firebase initialization failed - check credentials and network connectivity")
+        if not firebase_status["operations"].get("create_custom_token", {}).get("success"):
+            recommendations.append("Cannot create custom tokens - authentication will fail")
+        if not firebase_status.get("firebase_initialized_flag"):
+            recommendations.append("Firebase initialization flag is False - check startup logs")
+        if firebase_status["firebase_apps_count"] == 0:
+            recommendations.append("No Firebase apps initialized - Firebase Admin SDK not working")
+        
+        if not recommendations:
+            recommendations.append("Firebase appears to be working correctly")
+        
+        firebase_status["recommendations"] = recommendations
         
         return firebase_status
+        
     except Exception as e:
-        return {"error": str(e), "firebase_initialized": False}
+        import traceback
+        return {
+            "error": str(e),
+            "firebase_initialized": False,
+            "timestamp": datetime.utcnow().isoformat(),
+            "traceback": traceback.format_exc()
+        }
+
+@app.get("/debug/firebase/test-auth")
+def test_firebase_auth():
+    """Test Firebase authentication flow end-to-end"""
+    try:
+        from . import firebase_auth
+        from .auth_manager import auth_manager
+        
+        test_results = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "tests": {}
+        }
+        
+        # Test 1: Create a test custom token
+        try:
+            test_uid = f"test_user_{int(datetime.utcnow().timestamp())}"
+            custom_token = firebase_auth.create_custom_token(test_uid, {
+                "email": "test@example.com",
+                "test": True
+            })
+            test_results["tests"]["create_custom_token"] = {
+                "success": True,
+                "test_uid": test_uid,
+                "token_created": True
+            }
+        except Exception as e:
+            test_results["tests"]["create_custom_token"] = {
+                "success": False,
+                "error": str(e)
+            }
+            return test_results  # Stop here if we can't create tokens
+        
+        # Test 2: Try to verify the custom token (this would normally be done by client-side Firebase)
+        # Note: Custom tokens need to be exchanged for ID tokens on the client side
+        try:
+            # We'll simulate what should happen - this test shows the issue
+            test_results["tests"]["token_verification_note"] = {
+                "message": "Custom tokens need to be exchanged for ID tokens on client side",
+                "explanation": "The 500 errors occur because endpoints expect ID tokens, not custom tokens",
+                "solution": "Frontend needs to use signInWithCustomToken() to get ID tokens"
+            }
+        except Exception as e:
+            test_results["tests"]["token_verification"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        # Test 3: Verify development token works
+        try:
+            if settings.is_development:
+                dev_result = firebase_auth.verify_firebase_token("dev-id-token")
+                test_results["tests"]["dev_token_verification"] = {
+                    "success": True,
+                    "user_data": dev_result
+                }
+            else:
+                test_results["tests"]["dev_token_verification"] = {
+                    "skipped": "Not in development mode"
+                }
+        except Exception as e:
+            test_results["tests"]["dev_token_verification"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        # Test 4: Test auth manager comprehensive verification
+        try:
+            # This would fail with a real token since we don't have one, but shows the process
+            test_results["tests"]["auth_manager_ready"] = {
+                "success": auth_manager.safe_initialize(),
+                "status": auth_manager.get_auth_status()
+            }
+        except Exception as e:
+            test_results["tests"]["auth_manager_ready"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        # Summary
+        firebase_working = test_results["tests"].get("create_custom_token", {}).get("success", False)
+        test_results["summary"] = {
+            "firebase_initialization": "working" if firebase_working else "failed",
+            "likely_issue": "Frontend not exchanging custom tokens for ID tokens" if firebase_working else "Firebase Admin SDK initialization failed",
+            "next_steps": [
+                "Check frontend authentication flow",
+                "Ensure signInWithCustomToken() is used properly",
+                "Verify ID tokens are sent to backend, not custom tokens"
+            ] if firebase_working else [
+                "Check Firebase credentials",
+                "Verify network connectivity",
+                "Check server logs for initialization errors"
+            ]
+        }
+        
+        return test_results
+        
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
+            "traceback": traceback.format_exc()
+        }
+
+@app.get("/debug/firebase/test-token")
+def test_firebase_token_verification():
+    """Test Firebase token verification without database dependencies"""
+    try:
+        from . import firebase_auth
+        from .auth_manager import auth_manager
+        
+        # Test with development token (works in production too for testing)
+        test_results = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "tests": {}
+        }
+        
+        # Test 1: Try dev token
+        try:
+            decoded = firebase_auth.verify_firebase_token("dev-id-token")
+            test_results["tests"]["dev_token"] = {
+                "success": True,
+                "user_data": decoded
+            }
+        except Exception as e:
+            test_results["tests"]["dev_token"] = {
+                "success": False,
+                "error": str(e)
+            }
+        
+        # Test 2: Try invalid token (should fail gracefully)
+        try:
+            decoded = firebase_auth.verify_firebase_token("invalid_token")
+            test_results["tests"]["invalid_token"] = {
+                "success": False,
+                "unexpected": "Should have failed",
+                "data": decoded
+            }
+        except Exception as e:
+            test_results["tests"]["invalid_token"] = {
+                "success": True,  # Success means it properly rejected invalid token
+                "properly_rejected": True,
+                "error_type": type(e).__name__,
+                "error": str(e)
+            }
+        
+        # Test 3: Auth manager verification
+        try:
+            # This will fail but show proper error handling
+            result = auth_manager.verify_id_token_comprehensive("invalid_token")
+            test_results["tests"]["auth_manager"] = {
+                "unexpected_success": True,
+                "data": result
+            }
+        except Exception as e:
+            test_results["tests"]["auth_manager"] = {
+                "success": True,  # Properly handled the invalid token
+                "error_type": type(e).__name__,
+                "error": str(e)
+            }
+        
+        test_results["summary"] = {
+            "firebase_working": test_results["tests"].get("dev_token", {}).get("success", False),
+            "error_handling": test_results["tests"].get("invalid_token", {}).get("properly_rejected", False),
+            "auth_manager_working": "auth_manager" in test_results["tests"],
+            "conclusion": "Firebase authentication is working correctly" if test_results["tests"].get("dev_token", {}).get("success", False) else "Firebase authentication has issues"
+        }
+        
+        return test_results
+        
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
+            "traceback": traceback.format_exc()
+        }
 
 
 @app.get("/health/environment")

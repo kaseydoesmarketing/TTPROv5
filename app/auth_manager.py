@@ -83,8 +83,7 @@ class FirebaseAuthManager:
                 self.jwks_client = PyJWKClient(
                     "https://www.googleapis.com/oauth2/v3/certs",
                     cache_keys=True,
-                    max_cached_keys=10,
-                    cache_jwks=True
+                    max_cached_keys=10
                 )
                 self.last_jwks_refresh = current_time
                 logger.debug("🔄 JWKS client refreshed")
@@ -297,24 +296,46 @@ def require_auth(allow_degraded: bool = False):
 def retry_on_auth_failure(max_retries: int = 2):
     """Decorator to retry operations on authentication failures"""
     def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exception = None
-            
-            for attempt in range(max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except (AuthServiceUnavailableError, TokenExpiredError) as e:
-                    last_exception = e
-                    if attempt < max_retries:
-                        logger.warning(f"⚠️ Auth retry {attempt + 1}/{max_retries}: {e}")
-                        time.sleep(1.5 ** attempt)  # Exponential backoff
-                    else:
-                        logger.error(f"❌ Auth operation failed after {max_retries} retries")
-                except TokenInvalidError:
-                    # Don't retry on invalid tokens
-                    raise
-            
-            raise last_exception
-        return wrapper
+        if asyncio.iscoroutinefunction(func):
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                last_exception = None
+                
+                for attempt in range(max_retries + 1):
+                    try:
+                        return await func(*args, **kwargs)
+                    except (AuthServiceUnavailableError, TokenExpiredError) as e:
+                        last_exception = e
+                        if attempt < max_retries:
+                            logger.warning(f"⚠️ Auth retry {attempt + 1}/{max_retries}: {e}")
+                            await asyncio.sleep(1.5 ** attempt)  # Exponential backoff
+                        else:
+                            logger.error(f"❌ Auth operation failed after {max_retries} retries")
+                    except TokenInvalidError:
+                        # Don't retry on invalid tokens
+                        raise
+                
+                raise last_exception
+            return async_wrapper
+        else:
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                last_exception = None
+                
+                for attempt in range(max_retries + 1):
+                    try:
+                        return func(*args, **kwargs)
+                    except (AuthServiceUnavailableError, TokenExpiredError) as e:
+                        last_exception = e
+                        if attempt < max_retries:
+                            logger.warning(f"⚠️ Auth retry {attempt + 1}/{max_retries}: {e}")
+                            time.sleep(1.5 ** attempt)  # Exponential backoff
+                        else:
+                            logger.error(f"❌ Auth operation failed after {max_retries} retries")
+                    except TokenInvalidError:
+                        # Don't retry on invalid tokens
+                        raise
+                
+                raise last_exception
+            return sync_wrapper
     return decorator

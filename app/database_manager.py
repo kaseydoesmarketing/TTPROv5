@@ -225,7 +225,7 @@ class DatabaseConnectionManager:
         """Context manager for database sessions with automatic cleanup"""
         session = self.get_session_with_retry()
         if not session:
-            raise DatabaseError("Failed to create database session")
+            raise RuntimeError("Failed to create database session")
         
         try:
             yield session
@@ -278,7 +278,7 @@ def get_db():
     """Dependency for FastAPI routes - provides database session with retry logic"""
     session = db_manager.get_session_with_retry()
     if not session:
-        raise DatabaseError("Database session unavailable")
+        raise RuntimeError("Database session unavailable")
     
     try:
         yield session
