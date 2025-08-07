@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     stripe_secret_key: Optional[str] = None
     stripe_publishable_key: Optional[str] = None
     stripe_webhook_secret: Optional[str] = None
-    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://ttprov4.vercel.app,https://titletesterpro.com,https://www.titletesterpro.com"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.titletesterpro.com,https://titletesterpro.com"
     environment: str = "production"
     
     log_level: str = "INFO"
