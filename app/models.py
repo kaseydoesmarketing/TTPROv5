@@ -35,9 +35,11 @@ class User(Base):
     
     # Billing/Subscription fields
     stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
     subscription_status = Column(String, default="free")  # free, active, cancelled, past_due
     subscription_plan = Column(String, default="free")    # free, starter, professional, enterprise
     subscription_period_end = Column(DateTime, nullable=True)
+    subscription_updated_at = Column(DateTime, nullable=True)
     
     created_at = Column(DateTime, server_default=get_database_compatible_datetime())
     updated_at = Column(DateTime, server_default=get_database_compatible_datetime(), onupdate=get_database_compatible_datetime())

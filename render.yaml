@@ -1,31 +1,19 @@
 services:
   - type: web
-    name: titletesterpro-backend
+    name: ttpro-api
     env: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    plan: free
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: titletesterpro-db
-          property: connectionString
-      - key: ENVIRONMENT
-        value: production
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
-      - key: YOUTUBE_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET
-        sync: false
+    autoDeploy: true
+    healthCheckPath: /
+  - type: worker
+    name: ttpro-celery
+    env: docker
+    autoDeploy: true
+    startCommand: celery -A app.robust_tasks worker --loglevel=info
+  - type: worker
+    name: ttpro-celery-beat
+    env: docker
+    autoDeploy: true
+    startCommand: celery -A app.robust_tasks beat --loglevel=info --pidfile=
 
 databases:
   - name: titletesterpro-db

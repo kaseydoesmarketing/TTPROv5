@@ -1,123 +1,87 @@
-# TitleTesterPro Operations Runbook
+# Operations Runbook
 
-## Quick Reference Guide for Common Operations
+## Adding Vercel Preview to Firebase
 
-### Adding a New Vercel Preview to Firebase Domains
+When deploying a new Vercel preview branch:
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Navigate to Authentication → Settings → Authorized domains
-3. Click "Add domain"
-4. Add your Vercel preview URL (e.g., `ttprov5-abc123.vercel.app`)
-5. Save changes
-6. Test authentication on the preview URL
+2. Select the `titletesterpro` project
+3. Navigate to **Authentication** → **Settings** → **Authorized domains**
+4. Click **Add domain**
+5. Enter your Vercel preview URL (e.g., `ttprov5-abc123.vercel.app`)
+6. Save the changes
+7. Test authentication on the preview URL
 
-### Rotating Stripe Keys/Webhook Secret Safely
+## Rotating Stripe Secrets
 
-1. **Generate new keys in Stripe Dashboard**
-   - Go to Stripe Dashboard → Developers → API keys
-   - Create new secret key (keep old one active)
-   
-2. **Update Render environment variables**
-   - Set `STRIPE_SECRET_KEY` to new value
-   - Keep old key active in Stripe during transition
-   
-3. **For webhook secret rotation:**
-   - Create new webhook endpoint in Stripe
-   - Update `STRIPE_WEBHOOK_SECRET` in Render
-   - Test new webhook with Stripe CLI
-   - Disable old webhook endpoint after verification
+To safely rotate Stripe API keys:
 
-4. **Verification:**
-   - Test a checkout session
-   - Verify webhook events are received
-   - Check logs for any authentication errors
-   
-5. **Cleanup:**
-   - Revoke old API key in Stripe
-   - Remove old webhook endpoint
+### 1. Generate New Keys
+- Go to Stripe Dashboard → Developers → API keys
+- Create new secret key
+- Keep old key active during transition
 
-### Restarting Celery Worker/Beat on Render
+### 2. Update Environment Variables
+- In Render dashboard, update `STRIPE_SECRET_KEY`
+- Deploy the change
+- Test payment functionality
 
-1. **Via Render Dashboard:**
-   - Go to [Render Dashboard](https://dashboard.render.com)
-   - Select the worker service (`ttpro-celery` or `ttpro-celery-beat`)
-   - Click "Manual Deploy" → "Clear build cache & deploy"
-   
-2. **Force restart without redeploy:**
-   - Click on the service
-   - Go to "Settings" tab
-   - Click "Restart Service"
+### 3. Rotate Webhook Secret
+- In Stripe Dashboard → Webhooks
+- Create new webhook endpoint with new secret
+- Update `STRIPE_WEBHOOK_SECRET` in Render
+- Test webhook with Stripe CLI: `stripe listen --forward-to localhost:8000/api/billing/webhook`
+- Remove old webhook endpoint
 
-3. **Monitoring:**
-   - Check service logs for startup confirmation
-   - Look for: `celery@<hostname> ready` message
-   - Verify beat scheduler shows: `beat: Starting...`
+### 4. Cleanup
+- After confirming new keys work, revoke old keys in Stripe
+- Delete old webhook endpoints
 
-### Running Smoke Tests
+## Restarting Celery Services
 
-1. **Basic smoke test:**
-   ```bash
-   ./scripts/smoke.sh
-   ```
+### Via Render Dashboard
+1. Go to [Render Dashboard](https://dashboard.render.com)
+2. Select the worker service (`ttpro-celery` or `ttpro-celery-beat`)
+3. Click **Manual Deploy** → **Clear build cache & deploy**
 
-2. **Test specific environment:**
-   ```bash
-   ./scripts/smoke.sh https://ttprov4-k58o.onrender.com https://www.titletesterpro.com
-   ```
+### Force Restart
+1. Go to service settings
+2. Click **Restart Service** 
+3. Monitor logs for successful startup
 
-3. **What success looks like:**
-   - CORS header present: `access-control-allow-origin: https://www.titletesterpro.com`
-   - Health status: `"healthy"`
-   - Auth endpoint returns: `HTTP/1.1 401 Unauthorized` (expected for unauthenticated request)
+### Monitoring Celery
+Check service logs for:
+- Worker: `celery@hostname ready` message
+- Beat: `beat: Starting...` and periodic task logs
 
-4. **Common failures and fixes:**
-   - No CORS header: Check CORS configuration in backend
-   - 502/503 errors: Backend service is down, check Render logs
-   - Connection refused: Check API URL and network connectivity
+### Common Issues
+- **Redis connection errors**: Check `REDIS_URL` environment variable
+- **Database errors**: Verify `DATABASE_URL` and connection pool
+- **Import errors**: Ensure all dependencies are installed
+- **Task failures**: Check individual task logs and error handling
 
-### Emergency Procedures
+## Troubleshooting
 
-#### Backend is Down
-1. Check Render service status
-2. Look for recent deploys that might have broken
-3. Rollback to previous version if needed
-4. Check database connectivity
-5. Verify environment variables are set
+### Authentication Issues
+1. Verify Firebase credentials in Render environment
+2. Check authorized domains in Firebase Console
+3. Test with development tokens first
+4. Review authentication logs
 
-#### Authentication Broken
-1. Verify Firebase credentials in Render
-2. Check Firebase authorized domains
-3. Verify frontend is sending correct auth headers
-4. Check Firebase Console for any service issues
+### CORS Errors  
+1. Verify origin is in `ALLOWED_ORIGINS` list
+2. Check Vercel preview domains match regex pattern
+3. Test with curl: `curl -H "Origin: https://domain.com" -H "Access-Control-Request-Method: GET" -X OPTIONS api-url/api/channels`
 
-#### Database Connection Lost
-1. Check DATABASE_URL in Render
-2. Verify PostgreSQL service is running
-3. Check connection pool settings
-4. Look for connection limit issues
-5. Restart backend service if needed
+### Database Connection Issues
+1. Check `DATABASE_URL` format and credentials
+2. Verify network connectivity from Render
+3. Monitor connection pool usage
+4. Review database logs on Render
 
-#### Background Jobs Not Processing
-1. Check Redis connection (`REDIS_URL`)
-2. Verify Celery worker is running
+### Background Jobs Not Processing
+1. Check Redis connectivity: `redis-cli ping`
+2. Verify Celery worker is running and receiving tasks
 3. Check Celery beat for scheduled tasks
-4. Look for task exceptions in worker logs
-5. Clear Redis queue if corrupted
-
-### Monitoring Checklist
-
-Daily:
-- [ ] Check health endpoint
-- [ ] Verify background jobs are processing
-- [ ] Review error logs for patterns
-
-Weekly:
-- [ ] Review Stripe webhook success rate
-- [ ] Check database performance metrics
-- [ ] Verify backup status
-
-Monthly:
-- [ ] Rotate API keys (if needed)
-- [ ] Review and update authorized domains
-- [ ] Check for dependency updates
-- [ ] Review resource usage and costs
+4. Review task error logs and retry logic
+5. Clear Redis queue if corrupted: `redis-cli FLUSHALL`
