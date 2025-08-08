@@ -37,14 +37,9 @@ class Settings(BaseSettings):
     stripe_secret_key: Optional[str] = None
     stripe_publishable_key: Optional[str] = None
     stripe_webhook_secret: Optional[str] = None
-    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:8888,https://www.titletesterpro.com,https://titletesterpro.com"
     environment: str = "production"
     
     log_level: str = "INFO"
-    
-    @property
-    def cors_origins_list(self) -> List[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",")]
     
     @property
     def is_development(self) -> bool:
