@@ -100,6 +100,11 @@ app.add_middleware(
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["Authorization","Content-Type","X-Requested-With","Accept"],
     expose_headers=["Content-Type","Content-Length"]
+)?.*vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+    allow_headers=["Authorization","Content-Type","X-Requested-With","Accept"],
+    expose_headers=["Content-Type","Content-Length"]
 )
 
 app.include_router(ab_test_router)
