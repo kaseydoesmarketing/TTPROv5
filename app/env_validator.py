@@ -135,13 +135,6 @@ class EnvironmentValidator:
             "fallback": "production",
             "sensitive": False
         },
-        "CORS_ORIGINS": {
-            "category": EnvVarCategory.IMPORTANT,
-            "description": "Allowed CORS origins",
-            "validator": lambda x: "http" in x,
-            "fallback": "http://localhost:3000,http://localhost:5173",
-            "sensitive": False
-        }
     }
     
     def __init__(self):
