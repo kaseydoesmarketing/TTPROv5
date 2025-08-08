@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -11,9 +11,11 @@ from .config import settings
 from .database import get_db
 from .models import User
 from .auth_dependencies import get_current_firebase_user
+from .services.stripe_webhooks import StripeWebhookManager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+webhooks = StripeWebhookManager()
 
 # Configure Stripe
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
@@ -136,18 +138,13 @@ async def create_checkout_session(
         )
 
 @router.post("/billing/webhook")
-async def stripe_webhook(request, db: Session = Depends(get_db)):
+async def stripe_webhook(request: Request):
     """Handle Stripe webhook events"""
-    
-    if not stripe.api_key:
-        return {"status": "ignored - billing not configured"}
-    
-    # TODO: Implement Stripe webhook handling
-    # - Verify webhook signature
-    # - Handle subscription events (created, updated, cancelled)
-    # - Update user subscription status in database
-    
-    return {"status": "received"}
+    try:
+        return await webhooks.handle_webhook(request)
+    except Exception as e:
+        import logging; logging.exception("stripe webhook error")
+        raise HTTPException(status_code=400, detail="Webhook error")
 
 @router.get("/billing/usage")
 async def get_usage_info(
