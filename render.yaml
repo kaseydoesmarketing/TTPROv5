@@ -1,23 +1,18 @@
 services:
-  - type: web
-    name: ttpro-api
-    env: docker
-    autoDeploy: true
-    healthCheckPath: /
-    preDeployCommand: alembic upgrade head
-  - type: worker
-    name: ttpro-celery
-    env: docker
-    autoDeploy: true
-    startCommand: celery -A app.robust_tasks worker --loglevel=info
-  - type: worker
-    name: ttpro-celery-beat
-    env: docker
-    autoDeploy: true
-    startCommand: celery -A app.robust_tasks beat --loglevel=info --pidfile=
-
+- type: web
+  name: ttpro-api
+  env: docker
+  autoDeploy: true
+  healthCheckPath: /
+  preDeployCommand: alembic upgrade head
+- type: worker
+  name: ttpro-celery
+  env: docker
+- type: worker
+  name: ttpro-celery-beat
+  env: docker
 databases:
-  - name: titletesterpro-db
-    databaseName: titletesterpro
-    user: ttprouser
-    plan: free
+- name: titletesterpro-db
+  databaseName: titletesterpro
+  user: ttprouser
+  plan: free

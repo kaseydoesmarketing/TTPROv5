@@ -1,3 +1,5 @@
+from celery import Celery
+import os
 """
 Robust background tasks with comprehensive error handling and recovery
 All tasks use the enhanced job manager for reliability
@@ -455,3 +457,9 @@ def cleanup_old_job_metadata(self, job_id: str = None):
     except Exception as e:
         logger.error(f"❌ Job metadata cleanup failed: {e}")
         raise
+
+redis_url = os.getenv('REDIS_URL', '')
+try:
+    app_celery
+except NameError:
+    app_celery = Celery('ttpro', broker=redis_url, backend=redis_url)
