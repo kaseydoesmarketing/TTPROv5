@@ -4,6 +4,7 @@ services:
     env: docker
     autoDeploy: true
     healthCheckPath: /
+    preDeployCommand: alembic upgrade head
   - type: worker
     name: ttpro-celery
     env: docker
