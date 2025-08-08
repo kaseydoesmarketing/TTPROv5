@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Any
 import os
 
-from ..database import get_db
+from ..database import get_db, SessionLocal
 from ..models import User
 from ..config import settings
 
@@ -32,13 +32,10 @@ class StripeWebhookManager:
             logger.error("Missing Stripe signature header")
             raise HTTPException(status_code=400, detail="Missing signature")
         
-<<<<<<< HEAD
         if not self.webhook_secret:
             logger.error("STRIPE_WEBHOOK_SECRET not configured")
             raise HTTPException(status_code=500, detail="Webhook secret not configured")
         
-=======
->>>>>>> feat/stripe-webhook
         try:
             # Verify webhook signature
             event = self.stripe.Webhook.construct_event(
@@ -65,11 +62,7 @@ class StripeWebhookManager:
             elif event_type == 'customer.subscription.updated':
                 await self._handle_subscription_updated(event_data)
             elif event_type == 'customer.subscription.deleted':
-<<<<<<< HEAD
                 await self._handle_subscription_deleted(event_data)
-=======
-                await self._handle_subscription_cancelled(event_data)
->>>>>>> feat/stripe-webhook
             elif event_type == 'invoice.payment_succeeded':
                 await self._handle_payment_succeeded(event_data)
             elif event_type == 'invoice.payment_failed':
@@ -93,11 +86,7 @@ class StripeWebhookManager:
         logger.info(f"Checkout completed for customer {customer_email} (user_id: {user_id})")
         
         # Get database session
-<<<<<<< HEAD
         db = SessionLocal()
-=======
-        db = next(get_db())
->>>>>>> feat/stripe-webhook
         try:
             # Find user and update their Stripe customer ID
             if user_id:
@@ -109,22 +98,18 @@ class StripeWebhookManager:
                     user.subscription_updated_at = datetime.utcnow()
                     db.commit()
                     logger.info(f"Updated user {user_id} with Stripe customer {customer_id}")
-<<<<<<< HEAD
                 else:
                     logger.warning(f"User {user_id} not found for checkout completion")
         except Exception as e:
             logger.error(f"Database error in checkout completion: {e}")
             db.rollback()
             raise
-=======
->>>>>>> feat/stripe-webhook
         finally:
             db.close()
     
     async def _handle_subscription_created(self, subscription: Dict[str, Any]):
         """Handle new subscription creation"""
         customer_id = subscription.get('customer')
-<<<<<<< HEAD
         subscription_id = subscription.get('id')
         status = subscription.get('status')
         current_period_end = subscription.get('current_period_end')
@@ -148,30 +133,12 @@ class StripeWebhookManager:
             logger.error(f"Database error in subscription creation: {e}")
             db.rollback()
             raise
-=======
-        status = subscription.get('status')
-        current_period_end = subscription.get('current_period_end')
-        
-        logger.info(f"Subscription created for customer {customer_id}")
-        
-        # Update user subscription in database
-        db = next(get_db())
-        try:
-            user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
-            if user:
-                user.subscription_status = status
-                user.subscription_end_date = datetime.fromtimestamp(current_period_end) if current_period_end else None
-                user.subscription_updated_at = datetime.utcnow()
-                db.commit()
-                logger.info(f"Updated subscription for user {user.id}")
->>>>>>> feat/stripe-webhook
         finally:
             db.close()
     
     async def _handle_subscription_updated(self, subscription: Dict[str, Any]):
         """Handle subscription updates (plan changes, renewals, etc.)"""
         customer_id = subscription.get('customer')
-<<<<<<< HEAD
         subscription_id = subscription.get('id')
         status = subscription.get('status')
         current_period_end = subscription.get('current_period_end')
@@ -207,34 +174,6 @@ class StripeWebhookManager:
         
         # Update user subscription in database
         db = SessionLocal()
-=======
-        status = subscription.get('status')
-        current_period_end = subscription.get('current_period_end')
-        
-        logger.info(f"Subscription updated for customer {customer_id}")
-        
-        # Update user subscription in database
-        db = next(get_db())
-        try:
-            user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
-            if user:
-                user.subscription_status = status
-                user.subscription_end_date = datetime.fromtimestamp(current_period_end) if current_period_end else None
-                user.subscription_updated_at = datetime.utcnow()
-                db.commit()
-                logger.info(f"Updated subscription for user {user.id}")
-        finally:
-            db.close()
-    
-    async def _handle_subscription_cancelled(self, subscription: Dict[str, Any]):
-        """Handle subscription cancellation"""
-        customer_id = subscription.get('customer')
-        
-        logger.info(f"Subscription cancelled for customer {customer_id}")
-        
-        # Update user subscription in database
-        db = next(get_db())
->>>>>>> feat/stripe-webhook
         try:
             user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
             if user:
@@ -242,15 +181,12 @@ class StripeWebhookManager:
                 user.subscription_updated_at = datetime.utcnow()
                 db.commit()
                 logger.info(f"Cancelled subscription for user {user.id}")
-<<<<<<< HEAD
             else:
                 logger.warning(f"No user found for customer {customer_id}")
         except Exception as e:
             logger.error(f"Database error in subscription cancellation: {e}")
             db.rollback()
             raise
-=======
->>>>>>> feat/stripe-webhook
         finally:
             db.close()
     
@@ -261,7 +197,6 @@ class StripeWebhookManager:
         
         logger.info(f"Payment succeeded for customer {customer_id}: ${amount_paid}")
         
-<<<<<<< HEAD
         # Update user's subscription status to active on successful payment
         db = SessionLocal()
         try:
@@ -277,17 +212,6 @@ class StripeWebhookManager:
             logger.error(f"Database error in payment success: {e}")
             db.rollback()
             raise
-=======
-        # Update user's last payment info
-        db = next(get_db())
-        try:
-            user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
-            if user:
-                user.last_payment_date = datetime.utcnow()
-                user.last_payment_amount = amount_paid
-                db.commit()
-                logger.info(f"Updated payment info for user {user.id}")
->>>>>>> feat/stripe-webhook
         finally:
             db.close()
     
@@ -298,11 +222,7 @@ class StripeWebhookManager:
         logger.warning(f"Payment failed for customer {customer_id}")
         
         # Update user subscription status
-<<<<<<< HEAD
         db = SessionLocal()
-=======
-        db = next(get_db())
->>>>>>> feat/stripe-webhook
         try:
             user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
             if user:
@@ -310,14 +230,11 @@ class StripeWebhookManager:
                 user.subscription_updated_at = datetime.utcnow()
                 db.commit()
                 logger.info(f"Marked subscription as past_due for user {user.id}")
-<<<<<<< HEAD
             else:
                 logger.warning(f"No user found for customer {customer_id}")
         except Exception as e:
             logger.error(f"Database error in payment failure: {e}")
             db.rollback()
             raise
-=======
->>>>>>> feat/stripe-webhook
         finally:
             db.close()
