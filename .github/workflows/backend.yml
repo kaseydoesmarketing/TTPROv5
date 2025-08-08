@@ -1,6 +1,6 @@
 name: backend
 on:
-  push: { branches: [main] }
+  push: { branches: [main, bootstrap/v5] }
   pull_request:
 jobs:
   test:

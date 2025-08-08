@@ -1,12 +1,33 @@
 name: frontend
 on:
-  push: { branches: [main] }
+  push: { branches: [main, bootstrap/v5] }
   pull_request:
 jobs:
-  build:
+  build-app:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - run: cd frontend && npm ci && npm run build
+      - name: Build React App
+        run: npm ci && npm run build
+  
+  build-marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Build Marketing Site
+        run: cd marketing && npm ci && npm run build
+  
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Lint React App
+        run: npm ci && npm run lint
+      - name: Lint Marketing Site
+        run: cd marketing && npm ci && npm run lint
