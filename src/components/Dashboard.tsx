@@ -4,6 +4,13 @@ import { CreateTestModal } from './CreateTestModal';
 import { TestList } from './TestList';
 import { ChannelSelector } from './ChannelSelector';
 import { apiClient } from '../lib/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Play, TrendingUp, CheckCircle, Clock, Plus, BarChart3, Settings } from 'lucide-react';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
 
 export function Dashboard() {
   const { currentUser, logout } = useAuth();
@@ -57,145 +64,163 @@ export function Dashboard() {
   }, [refreshTrigger]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <nav className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">TitleTesterPro</h1>
-            </div>
             <div className="flex items-center space-x-4">
-              <ChannelSelector />
               <div className="flex items-center space-x-2">
-                {currentUser?.photoURL && (
-                  <img
-                    src={currentUser.photoURL}
-                    alt="Profile"
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm text-gray-700">{currentUser?.displayName}</span>
+                <Play className="h-8 w-8 text-primary" />
+                <h1 className="text-xl font-bold text-gray-900">TitleTesterPro</h1>
               </div>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
+            </div>
+            <div className="flex items-center space-x-6">
+              <ChannelSelector />
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={currentUser?.photoURL || ''} alt="Profile" />
+                  <AvatarFallback>{currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium text-gray-700">{currentUser?.displayName}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Sign Out
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-0">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to TitleTesterPro</h2>
-            <p className="text-gray-600">Start A/B testing your YouTube titles to maximize engagement and views.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
+                <p className="text-muted-foreground">Track your A/B tests and optimize your YouTube titles for better performance.</p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Test
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">A</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Active Tests</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.activeTests}</dd>
-                    </dl>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-sm text-gray-500">
-                    {stats.activeTests === 0 ? 'No active tests' : `${stats.activeTests} running`}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Card className="border-none shadow-lg bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-700">Active Tests</CardTitle>
+                <Clock className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900">{stats.activeTests}</div>
+                <p className="text-xs text-blue-600">
+                  {stats.activeTests === 0 ? 'No active tests' : `${stats.activeTests} running`}
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">✓</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Completed Tests</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.completedTests}</dd>
-                    </dl>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-sm text-gray-500">
-                    {stats.completedTests === 0 ? 'No completed tests' : `${stats.completedTests} finished`}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Card className="border-none shadow-lg bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-green-700">Completed Tests</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-900">{stats.completedTests}</div>
+                <p className="text-xs text-green-600">
+                  {stats.completedTests === 0 ? 'No completed tests' : `${stats.completedTests} finished`}
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                      <span className="text-white font-bold">%</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">API Quota Used</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.quotaUsed}%</dd>
-                    </dl>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-sm text-gray-500">{stats.quotaUsed} / 10,000 daily quota</div>
-                </div>
-              </div>
-            </div>
+            <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-purple-700">API Quota</CardTitle>
+                <BarChart3 className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-900">{stats.quotaUsed}%</div>
+                <p className="text-xs text-purple-600">
+                  {stats.quotaUsed} / 10,000 daily quota
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="bg-white shadow rounded-lg mb-8">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Your A/B Tests</h3>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  Create New Test
-                </button>
-              </div>
-              <TestList refreshTrigger={refreshTrigger} />
-            </div>
-          </div>
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="overview" className="space-y-6">
+              <Card className="shadow-lg border-none">
+                <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-xl text-gray-900">Your A/B Tests</CardTitle>
+                      <CardDescription className="mt-1">
+                        Monitor and manage your title optimization experiments
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {stats.activeTests + stats.completedTests} total tests
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <TestList refreshTrigger={refreshTrigger} />
+                </CardContent>
+              </Card>
 
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Getting Started</h3>
-              <div className="text-sm text-gray-600 mb-4">
-                Create your first A/B test to start optimizing your YouTube titles
-              </div>
-              <div className="text-sm text-gray-600 mb-6">
-                To get started with TitleTesterPro:
-                <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Connect your YouTube channel (coming soon)</li>
-                  <li>Select a video to test</li>
-                  <li>Create title variants</li>
-                  <li>Set test duration and rotation schedule</li>
-                  <li>Monitor results and optimize</li>
-                </ol>
-              </div>
-            </div>
-          </div>
+              {(stats.activeTests + stats.completedTests) === 0 && (
+                <Card className="shadow-lg border-none bg-gradient-to-r from-orange-50 to-amber-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-orange-800">
+                      <TrendingUp className="h-5 w-5 mr-2" />
+                      Getting Started
+                    </CardTitle>
+                    <CardDescription className="text-orange-700">
+                      Create your first A/B test to start optimizing your YouTube titles
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-sm text-orange-700">
+                        Follow these steps to get started with TitleTesterPro:
+                      </p>
+                      <ol className="list-decimal list-inside text-sm text-orange-700 space-y-2 ml-4">
+                        <li>Connect your YouTube channel</li>
+                        <li>Select a video to test</li>
+                        <li>Create title variants</li>
+                        <li>Set test duration and rotation schedule</li>
+                        <li>Monitor results and optimize</li>
+                      </ol>
+                      <div className="pt-4">
+                        <Button 
+                          onClick={() => setShowCreateModal(true)}
+                          className="bg-orange-600 hover:bg-orange-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Your First Test
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="analytics" className="space-y-6">
+              <AnalyticsDashboard />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 

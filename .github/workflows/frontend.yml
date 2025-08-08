@@ -1,6 +1,7 @@
 name: frontend
 on:
 <<<<<<< HEAD
+<<<<<<< HEAD
   push:
     branches: [main]
   pull_request: {}
@@ -26,11 +27,29 @@ jobs:
         run: npm ci && npm run build
   
   build-marketing:
+=======
+  push: { branches: [main, bootstrap/v5] }
+  pull_request:
+jobs:
+  build-app:
+>>>>>>> ui/marketing-site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
+<<<<<<< HEAD
+=======
+      - name: Build React App
+        run: npm ci && npm run build
+  
+  build-marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+>>>>>>> ui/marketing-site
       - name: Build Marketing Site
         run: cd marketing && npm ci && npm run build
   
@@ -43,5 +62,9 @@ jobs:
       - name: Lint React App
         run: npm ci && npm run lint
       - name: Lint Marketing Site
+<<<<<<< HEAD
         run: cd marketing && npm ci && npm run lint
 >>>>>>> ci/smoke-and-build
+=======
+        run: cd marketing && npm ci && npm run lint
+>>>>>>> ui/marketing-site
