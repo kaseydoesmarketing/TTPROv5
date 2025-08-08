@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -85,13 +85,21 @@ async def health_check_simple():
         "service": "titletesterpro-api"
     }
 
+# Deterministic CORS configuration
+ALLOWED_ORIGINS = [
+    "https://www.titletesterpro.com",
+    "https://titletesterpro.com", 
+    "http://localhost:5173"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://.*ttpro[-]?(ov4|ov5|v5)?.*vercel\.app$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+    allow_headers=["Authorization","Content-Type","X-Requested-With","Accept"],
+    expose_headers=["Content-Type","Content-Length"]
 )
 
 app.include_router(ab_test_router)
