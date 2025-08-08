@@ -1,9 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  experimental: {
-    appDir: true,
-  },
   images: {
     domains: ['i.ytimg.com', 'yt3.ggpht.com'],
   },
