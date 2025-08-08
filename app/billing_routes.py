@@ -142,11 +142,7 @@ async def stripe_webhook(request: Request):
     """Handle Stripe webhook events"""
     try:
         return await webhooks.handle_webhook(request)
-<<<<<<< HEAD
-    except Exception:
-=======
     except Exception as e:
->>>>>>> feat/stripe-webhook
         import logging; logging.exception("stripe webhook error")
         raise HTTPException(status_code=400, detail="Webhook error")
 
