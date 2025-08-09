@@ -89,7 +89,6 @@ async def health_check_simple():
 ALLOWED_ORIGINS = [
     "https://www.titletesterpro.com",
     "https://titletesterpro.com",
-    "https://app.titletesterpro.com",
     "http://localhost:5173"
 ]
 

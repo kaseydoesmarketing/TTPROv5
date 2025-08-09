@@ -5,9 +5,9 @@ const nextConfig = {
     domains: ['i.ytimg.com', 'yt3.ggpht.com'],
   },
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.NODE_ENV === 'production' 
-      ? 'https://app.titletesterpro.com'
-      : 'http://localhost:5173'
+    NEXT_PUBLIC_API_URL: process.env.NODE_ENV === 'production' 
+      ? 'https://ttprov4-k58o.onrender.com'
+      : 'http://localhost:8000'
   }
 }
 
