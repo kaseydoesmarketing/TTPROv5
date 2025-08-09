@@ -183,7 +183,7 @@ export const debugFirebaseConfig = () => {
   console.log("Environment Variables Status:");
   Object.entries(firebaseConfig).forEach(([key, value]) => {
     const status = value ? "✅ SET" : "❌ MISSING";
-    const preview = value ? `${value.substring(0, 10)}...` : "undefined";
+    const preview = value && typeof value === 'string' ? `${value.substring(0, 10)}...` : "undefined";
     console.log(`  ${key}: ${status} (${preview})`);
   });
   
