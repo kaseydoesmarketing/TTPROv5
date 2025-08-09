@@ -1,8 +1,7 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://ttprov4-k58o.onrender.com"
-  }
+  "rewrites": [
+    { "source": "/app", "destination": "/app" },
+    { "source": "/app/(.*)", "destination": "/app/$1" },
+    { "source": "/api/(.*)", "destination": "https://ttprov4-k58o.onrender.com/$1" }
+  ]
 }
