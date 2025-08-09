@@ -15,7 +15,7 @@ from .ab_test_routes import router as ab_test_router
 from .channel_routes import router as channel_router
 from .billing_routes import router as billing_router
 from .admin_routes import router as admin_router
-from .auth_dependencies import get_current_firebase_user
+from .auth_dependencies import get_current_firebase_user, get_current_user_session
 import logging
 import asyncio
 import requests
@@ -227,7 +227,12 @@ async def debug_cors_domains():
 # Additional API routes for dashboard
 @app.post("/api/auth/firebase")
 async def firebase_auth(request: Request):
-    """Handle Firebase ID token authentication with enhanced debugging"""
+    """Handle Firebase ID token authentication with session creation"""
+    from fastapi import Response
+    import secrets
+    import hashlib
+    from datetime import datetime, timedelta
+    
     try:
         # Get token from both possible locations
         body = await request.json()
@@ -266,14 +271,102 @@ async def firebase_auth(request: Request):
             )
             db.add(user)
             db.commit()
+            db.refresh(user)
         
-        return {"ok": True, "user_id": user.id}
+        # Create secure session token
+        session_token = secrets.token_urlsafe(32)
+        session_hash = hashlib.sha256(session_token.encode()).hexdigest()
+        
+        # Store session in user record (you might want a separate sessions table)
+        user.session_token = session_hash
+        user.session_expires = datetime.utcnow() + timedelta(days=7)  # 7 day session
+        db.commit()
+        
+        logger.info(f"[AUTH] Created session for user {user.id} ({user.email})")
+        
+        # Create response with session cookie
+        response_data = {
+            "ok": True, 
+            "user_id": user.id,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+                "firebase_uid": user.firebase_uid
+            }
+        }
+        
+        from fastapi.responses import JSONResponse
+        response = JSONResponse(content=response_data)
+        
+        # Set secure HTTP-only session cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+            httponly=True,
+            secure=True,  # HTTPS only
+            samesite="lax",
+            domain=".titletesterpro.com"  # Allow subdomain access
+        )
+        
+        return response
+        
     except Exception as e:
         logger.error(f"Firebase auth error: {e}")
         raise HTTPException(status_code=401, detail="Authentication failed")
 
+@app.post("/api/auth/logout")
+async def logout(current_user: User = Depends(get_current_user_session), db: Session = Depends(get_db)):
+    """Clear user session and log out"""
+    try:
+        # Clear session from database
+        current_user.session_token = None
+        current_user.session_expires = None
+        db.commit()
+        
+        logger.info(f"[AUTH] User {current_user.id} logged out")
+        
+        # Create response that clears the cookie
+        from fastapi.responses import JSONResponse
+        response = JSONResponse(content={"ok": True, "message": "Logged out successfully"})
+        
+        # Clear the session cookie
+        response.set_cookie(
+            key="session_token",
+            value="",
+            max_age=0,  # Expire immediately
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            domain=".titletesterpro.com"
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+@app.get("/api/auth/session")
+async def get_session_status(current_user: User = Depends(get_current_user_session)):
+    """Check if user has valid session and return user info"""
+    try:
+        return {
+            "authenticated": True,
+            "user": {
+                "id": current_user.id,
+                "email": current_user.email,
+                "display_name": current_user.display_name,
+                "firebase_uid": current_user.firebase_uid
+            }
+        }
+    except Exception as e:
+        logger.error(f"Session status error: {e}")
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
 @app.get("/api/campaigns")
-async def get_campaigns(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
+async def get_campaigns(current_user: User = Depends(get_current_user_session), db: Session = Depends(get_db)):
     """Get user's campaigns - maps to existing AB tests"""
     try:
         from .models import ABTest

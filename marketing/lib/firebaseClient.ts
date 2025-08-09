@@ -164,8 +164,28 @@ export const signInAndVerify = async () => {
     
     const responseData = JSON.parse(responseText);
     console.log("✅ Authentication successful:", responseData);
+    console.log("🍪 Session cookie should now be set by the backend");
     
-    return responseData;
+    // Test if session is working by checking session status
+    console.log("🔍 Testing session status...");
+    try {
+      const sessionResponse = await fetch(`${apiBaseUrl}/api/auth/session`, {
+        method: "GET",
+        credentials: "include"  // Include cookies
+      });
+      
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json();
+        console.log("✅ Session verification successful:", sessionData);
+        return { ...responseData, sessionVerified: true, sessionData };
+      } else {
+        console.warn("⚠️ Session verification failed:", await sessionResponse.text());
+        return { ...responseData, sessionVerified: false };
+      }
+    } catch (sessionError) {
+      console.error("❌ Session verification error:", sessionError);
+      return { ...responseData, sessionVerified: false };
+    }
     
   } catch (error) {
     console.error("❌ Authentication error:", error);
@@ -214,8 +234,61 @@ export const debugFirebaseConfig = () => {
   };
 };
 
+/**
+ * Check if user has active session
+ */
+export const checkSession = async () => {
+  try {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+    const response = await fetch(`${apiBaseUrl}/api/auth/session`, {
+      method: "GET",
+      credentials: "include"
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log("✅ Active session found:", data);
+      return data;
+    } else {
+      console.log("ℹ️ No active session");
+      return null;
+    }
+  } catch (error) {
+    console.error("❌ Session check error:", error);
+    return null;
+  }
+};
+
+/**
+ * Logout and clear session
+ */
+export const logoutSession = async () => {
+  try {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+    const response = await fetch(`${apiBaseUrl}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include"
+    });
+    
+    if (response.ok) {
+      console.log("✅ Logged out successfully");
+      // Also sign out from Firebase
+      await signOut(auth);
+      return true;
+    } else {
+      console.error("❌ Logout failed");
+      return false;
+    }
+  } catch (error) {
+    console.error("❌ Logout error:", error);
+    return false;
+  }
+};
+
 // Make debugging function available globally in development
 if (typeof window !== 'undefined') {
   (window as any).debugFirebaseConfig = debugFirebaseConfig;
   (window as any).signInAndVerify = signInAndVerify;
+  (window as any).checkSession = checkSession;
+  (window as any).logoutSession = logoutSession;
 }

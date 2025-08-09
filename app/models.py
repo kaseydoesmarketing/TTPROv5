@@ -44,6 +44,10 @@ class User(Base):
     last_payment_date = Column(DateTime, nullable=True)
     last_payment_amount = Column(Float, nullable=True)
     
+    # Session management
+    session_token = Column(String, nullable=True, index=True)  # Hashed session token
+    session_expires = Column(DateTime, nullable=True)
+    
     created_at = Column(DateTime, server_default=get_database_compatible_datetime())
     updated_at = Column(DateTime, server_default=get_database_compatible_datetime(), onupdate=get_database_compatible_datetime())
     is_active = Column(Boolean, default=True)

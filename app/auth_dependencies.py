@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
@@ -14,6 +14,8 @@ from .auth_manager import (
 from .models import User
 from .config import settings
 import logging
+import hashlib
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -239,3 +241,54 @@ async def get_current_paid_user(
         )
     
     return current_user
+
+
+async def get_current_user_session(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Get current user from session cookie instead of Firebase token.
+    This enables persistent login without requiring the Firebase token on every request.
+    """
+    try:
+        # Get session token from cookie
+        session_token = request.cookies.get("session_token")
+        
+        if not session_token:
+            logger.debug("No session token found in cookies")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No active session. Please sign in.",
+                headers={"WWW-Authenticate": "Session"}
+            )
+        
+        # Hash the session token for database lookup
+        session_hash = hashlib.sha256(session_token.encode()).hexdigest()
+        
+        # Find user with this session token
+        user = db.query(User).filter(
+            User.session_token == session_hash,
+            User.session_expires > datetime.utcnow(),
+            User.is_active == True
+        ).first()
+        
+        if not user:
+            logger.debug("Invalid or expired session token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired or invalid. Please sign in again.",
+                headers={"WWW-Authenticate": "Session"}
+            )
+        
+        logger.debug(f"✅ Session authenticated for user {user.id} ({user.email})")
+        return user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Session authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication system error. Please try again."
+        )
