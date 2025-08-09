@@ -108,19 +108,148 @@ app.include_router(channel_router)
 app.include_router(billing_router, prefix="/api")
 app.include_router(admin_router)
 
+# Debug and inspection utilities
+import base64
+import json
+
+def _peek_jwt(jwt_str: str):
+    """Safely decode and inspect JWT token claims without verification"""
+    try:
+        if not jwt_str or "." not in jwt_str:
+            logger.warning("[JWT PEEK] Invalid token format")
+            return
+            
+        parts = jwt_str.split(".")
+        if len(parts) != 3:
+            logger.warning(f"[JWT PEEK] Invalid JWT parts count: {len(parts)}")
+            return
+            
+        hdr_b64, payload_b64, _sig = parts
+        
+        # Add padding for base64 decoding
+        def pad(s): 
+            return s + "=" * (-len(s) % 4)
+        
+        # Decode header and payload safely
+        try:
+            header = json.loads(base64.urlsafe_b64decode(pad(hdr_b64)).decode())
+            payload = json.loads(base64.urlsafe_b64decode(pad(payload_b64)).decode())
+        except Exception as e:
+            logger.warning(f"[JWT PEEK] Decode failed: {e}")
+            return
+        
+        # Extract only safe claims for debugging
+        safe_payload = {
+            k: v for k, v in payload.items() 
+            if k in ("iss", "aud", "sub", "user_id", "firebase", "exp", "iat", "auth_time")
+        }
+        
+        logger.info(f"[JWT PEEK] header={header}")
+        logger.info(f"[JWT PEEK] payload={safe_payload}")
+        
+        # Critical project checks
+        expected_project = "titletesterpro"
+        aud = safe_payload.get("aud")
+        iss = safe_payload.get("iss")
+        
+        if aud != expected_project:
+            logger.error(f"[JWT PEEK] ❌ AUDIENCE MISMATCH: got '{aud}', expected '{expected_project}'")
+        else:
+            logger.info(f"[JWT PEEK] ✅ Audience matches: {aud}")
+            
+        expected_iss = f"https://securetoken.google.com/{expected_project}"
+        if iss != expected_iss:
+            logger.error(f"[JWT PEEK] ❌ ISSUER MISMATCH: got '{iss}', expected '{expected_iss}'")
+        else:
+            logger.info(f"[JWT PEEK] ✅ Issuer matches: {iss}")
+            
+    except Exception as e:
+        logger.error(f"[JWT PEEK] Failed to inspect token: {e}")
+
+@app.get("/debug/firebase-config-method")
+async def debug_firebase_config_method():
+    """Debug endpoint to verify Firebase configuration method"""
+    config_method = "UNKNOWN"
+    google_creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    
+    if google_creds_path:
+        config_method = "SECRET_FILE"
+        file_exists = os.path.exists(google_creds_path) if google_creds_path else False
+    else:
+        config_method = "ENVIRONMENT_VARIABLES"
+        file_exists = False
+    
+    return {
+        "configuration_method": config_method,
+        "google_application_credentials": google_creds_path,
+        "secret_file_exists": file_exists,
+        "environment_variables_present": {
+            "FIREBASE_PROJECT_ID": bool(os.getenv("FIREBASE_PROJECT_ID")),
+            "FIREBASE_CLIENT_EMAIL": bool(os.getenv("FIREBASE_CLIENT_EMAIL")),
+            "FIREBASE_PRIVATE_KEY": bool(os.getenv("FIREBASE_PRIVATE_KEY")),
+            "FIREBASE_PRIVATE_KEY_ID": bool(os.getenv("FIREBASE_PRIVATE_KEY_ID")),
+            "FIREBASE_CLIENT_ID": bool(os.getenv("FIREBASE_CLIENT_ID"))
+        },
+        "recommendation": "SECRET_FILE" if google_creds_path else "ADD_GOOGLE_APPLICATION_CREDENTIALS"
+    }
+
+@app.get("/debug/cors-domains")
+async def debug_cors_domains():
+    """Debug endpoint to check CORS configuration"""
+    return {
+        "cors_configuration": {
+            "allowed_origins": ALLOWED_ORIGINS,
+            "allow_origin_regex": r"^https://.*ttpro[-]?(ov4|ov5|v5)?.*vercel\.app$",
+            "environment_cors": os.getenv("CORS_ORIGINS", "Not set")
+        },
+        "expected_origins": [
+            "https://titletesterpro.com",
+            "https://www.titletesterpro.com", 
+            "https://*.vercel.app",
+            "https://marketing-*.vercel.app"
+        ],
+        "firebase_authorized_domains_check": {
+            "required_domains": [
+                "titletesterpro.com",
+                "www.titletesterpro.com",
+                "localhost (for development)",
+                "your-vercel-preview-domains"
+            ],
+            "firebase_console_url": "https://console.firebase.google.com/project/titletesterpro/authentication/settings"
+        },
+        "test_cors_command": "curl -H 'Origin: https://titletesterpro.com' -H 'Access-Control-Request-Method: POST' -X OPTIONS https://ttprov4-k58o.onrender.com/api/auth/firebase"
+    }
+
 # Additional API routes for dashboard
 @app.post("/api/auth/firebase")
-async def firebase_auth(request: dict, db: Session = Depends(get_db)):
-    """Handle Firebase ID token authentication"""
+async def firebase_auth(request: Request):
+    """Handle Firebase ID token authentication with enhanced debugging"""
     try:
-        id_token = request.get("idToken")
+        # Get token from both possible locations
+        body = await request.json()
+        id_token = body.get("idToken") 
+        
         if not id_token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                id_token = auth_header.replace("Bearer ", "")
+        
+        if not id_token:
+            logger.error("[AUTH] No ID token found in body or Authorization header")
             raise HTTPException(status_code=400, detail="ID token is required")
+        
+        logger.info(f"[AUTH] Received token (length: {len(id_token)})")
+        
+        # 🔍 INSPECT TOKEN BEFORE VERIFICATION
+        _peek_jwt(id_token)
         
         # Verify Firebase token
         decoded_token = verify_firebase_token(id_token)
         if not decoded_token:
             raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Get database session
+        db = next(get_db())
         
         # Create or get user
         user = db.query(User).filter(User.firebase_uid == decoded_token['uid']).first()
