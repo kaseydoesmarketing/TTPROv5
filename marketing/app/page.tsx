@@ -22,10 +22,10 @@ export default function HomePage() {
             </div>
             <div className="flex space-x-4">
               <Button variant="ghost" asChild>
-                <a href={process.env.NEXT_PUBLIC_APP_URL}>Sign In</a>
+                <a href="/app">Sign In</a>
               </Button>
               <Button asChild>
-                <a href={process.env.NEXT_PUBLIC_APP_URL}>Get Started</a>
+                <a href="/app">Get Started</a>
               </Button>
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
-                <a href={process.env.NEXT_PUBLIC_APP_URL} className="inline-flex items-center">
+                <a href="/app" className="inline-flex items-center">
                   Start Free Trial
                   <TrendingUp className="ml-2 h-4 w-4" />
                 </a>
@@ -134,7 +134,7 @@ export default function HomePage() {
               Join thousands of creators who are already using TitleTesterPro to increase their views.
             </p>
             <Button variant="secondary" size="lg" asChild>
-              <a href={process.env.NEXT_PUBLIC_APP_URL}>
+              <a href="/app">
                 Start Your Free Trial
               </a>
             </Button>

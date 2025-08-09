@@ -68,10 +68,10 @@ export default function PricingPage() {
             </div>
             <div className="flex space-x-4">
               <Button variant="ghost" asChild>
-                <a href={process.env.NEXT_PUBLIC_APP_URL}>Sign In</a>
+                <a href="/app">Sign In</a>
               </Button>
               <Button asChild>
-                <a href={process.env.NEXT_PUBLIC_APP_URL}>Get Started</a>
+                <a href="/app">Get Started</a>
               </Button>
             </div>
           </div>
@@ -142,7 +142,7 @@ export default function PricingPage() {
                   size="lg"
                   asChild
                 >
-                  <a href={process.env.NEXT_PUBLIC_APP_URL}>
+                  <a href="/app">
                     Get Started
                   </a>
                 </Button>
