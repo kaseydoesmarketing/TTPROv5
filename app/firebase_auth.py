@@ -11,8 +11,63 @@ logger = logging.getLogger(__name__)
 _firebase_initialized = False
 
 
+def _peek_jwt_claims(jwt_str: str) -> Optional[Dict[str, Any]]:
+    """Safely decode JWT claims for debugging (only when FIREBASE_DEBUG=1)"""
+    if os.getenv("FIREBASE_DEBUG", "0") != "1":
+        return None
+        
+    try:
+        import base64
+        import json
+        
+        if not jwt_str or "." not in jwt_str:
+            logger.warning("[JWT PEEK] Invalid token format")
+            return None
+            
+        parts = jwt_str.split(".")
+        if len(parts) != 3:
+            logger.warning(f"[JWT PEEK] Invalid JWT parts count: {len(parts)}")
+            return None
+            
+        # Decode payload
+        payload_b64 = parts[1]
+        # Add padding for base64 decoding
+        payload_b64 += "=" * (-len(payload_b64) % 4)
+        
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64).decode())
+        
+        # Extract safe claims for debugging
+        safe_payload = {
+            k: v for k, v in payload.items() 
+            if k in ("iss", "aud", "sub", "user_id", "firebase", "exp", "iat", "auth_time", "email", "name")
+        }
+        
+        logger.info(f"[JWT PEEK] payload={safe_payload}")
+        
+        # Critical project checks
+        expected_project = "titletesterpro"
+        aud = safe_payload.get("aud")
+        iss = safe_payload.get("iss")
+        
+        if aud != expected_project:
+            logger.error(f"[JWT PEEK] ❌ AUDIENCE MISMATCH: got '{aud}', expected '{expected_project}'")
+        else:
+            logger.info(f"[JWT PEEK] ✅ Audience matches: {aud}")
+            
+        expected_iss = f"https://securetoken.google.com/{expected_project}"
+        if iss != expected_iss:
+            logger.error(f"[JWT PEEK] ❌ ISSUER MISMATCH: got '{iss}', expected '{expected_iss}'")
+        else:
+            logger.info(f"[JWT PEEK] ✅ Issuer matches: {iss}")
+            
+        return safe_payload
+    except Exception as e:
+        logger.error(f"[JWT PEEK] Failed to inspect token: {e}")
+        return None
+
+
 def initialize_firebase():
-    """Initialize Firebase Admin SDK with secure service account file or fallback to environment variables"""
+    """Initialize Firebase Admin SDK - SECURE SERVICE ACCOUNT FILE ONLY"""
     global _firebase_initialized
     
     if _firebase_initialized:
@@ -20,100 +75,41 @@ def initialize_firebase():
         
     if not firebase_admin._apps:
         try:
-            # Method 1: Use GOOGLE_APPLICATION_CREDENTIALS (Render Secret File) - PREFERRED
-            if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-                service_account_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-                logger.info(f"Using Firebase service account file: {service_account_path}")
+            # SECURE METHOD: Use GOOGLE_APPLICATION_CREDENTIALS (Render Secret File)
+            service_account_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            if not service_account_path:
+                # Check if fallback is explicitly allowed
+                if os.environ.get("ALLOW_ENV_FALLBACK", "0") != "1":
+                    raise ValueError("❌ GOOGLE_APPLICATION_CREDENTIALS not set. Set ALLOW_ENV_FALLBACK=1 for emergency fallback.")
                 
-                # Verify file exists and is readable
-                if not os.path.exists(service_account_path):
-                    raise FileNotFoundError(f"Firebase service account file not found: {service_account_path}")
-                
-                try:
-                    cred = credentials.Certificate(service_account_path)
-                    firebase_admin.initialize_app(cred)
-                    _firebase_initialized = True
-                    logger.info("✅ Firebase Admin SDK initialized successfully using service account file")
-                    return
-                except Exception as e:
-                    logger.error(f"❌ Failed to initialize Firebase with service account file: {e}")
-                    raise
+                logger.warning("⚠️ EMERGENCY FALLBACK: Using environment variables (less secure)")
+                # Fallback to environment variables only if explicitly allowed
+                cred_dict = settings.get_firebase_service_account_dict()
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                _firebase_initialized = True
+                logger.warning("⚠️ Firebase: Using FALLBACK environment variables (less secure)")
+                return
             
-            # Method 2: Fallback to environment variables (LESS SECURE)
-            logger.warning("⚠️ GOOGLE_APPLICATION_CREDENTIALS not set, falling back to environment variables")
+            logger.info(f"🔐 Firebase: Using SECURE service account file: {service_account_path}")
             
-            if settings.is_development:
-                # Development mode: more lenient error handling
-                required_fields = [
-                    settings.firebase_project_id,
-                    settings.firebase_private_key_id,
-                    settings.firebase_private_key,
-                    settings.firebase_client_email,
-                    settings.firebase_client_id
-                ]
-                
-                if (settings.firebase_private_key == "-----BEGIN PRIVATE KEY-----\ntest_private_key_content\n-----END PRIVATE KEY-----\n" or
-                    "test_" in settings.firebase_project_id):
-                    logger.warning("Development mode: Skipping Firebase initialization due to test credentials")
-                    _firebase_initialized = True
-                    return
-                
-                if not all(required_fields):
-                    logger.warning("Development mode: Skipping Firebase initialization due to missing credentials")
-                    _firebase_initialized = True
-                    return
-            else:
-                # Production mode: strict validation
-                required_fields = [
-                    settings.firebase_project_id,
-                    settings.firebase_private_key_id,
-                    settings.firebase_private_key,
-                    settings.firebase_client_email,
-                    settings.firebase_client_id
-                ]
-                
-                if not all(required_fields):
-                    missing = []
-                    if not settings.firebase_project_id:
-                        missing.append("FIREBASE_PROJECT_ID")
-                    if not settings.firebase_private_key_id:
-                        missing.append("FIREBASE_PRIVATE_KEY_ID")
-                    if not settings.firebase_private_key:
-                        missing.append("FIREBASE_PRIVATE_KEY")
-                    if not settings.firebase_client_email:
-                        missing.append("FIREBASE_CLIENT_EMAIL")
-                    if not settings.firebase_client_id:
-                        missing.append("FIREBASE_CLIENT_ID")
-                    
-                    raise ValueError(f"Missing required Firebase Admin SDK configuration: {', '.join(missing)}")
+            # Verify file exists and is readable
+            if not os.path.exists(service_account_path):
+                raise FileNotFoundError(f"Firebase service account file not found: {service_account_path}")
             
-            # Create credential dictionary from environment variables
-            cred_dict = {
-                "type": "service_account",
-                "project_id": settings.firebase_project_id,
-                "private_key_id": settings.firebase_private_key_id,
-                "private_key": settings.firebase_private_key.replace('\\n', '\n'),
-                "client_email": settings.firebase_client_email,
-                "client_id": settings.firebase_client_id,
-                "auth_uri": settings.firebase_auth_uri,
-                "token_uri": settings.firebase_token_uri,
-                "auth_provider_x509_cert_url": settings.firebase_auth_provider_x509_cert_url,
-                "client_x509_cert_url": settings.firebase_client_x509_cert_url or f"https://www.googleapis.com/robot/v1/metadata/x509/{settings.firebase_client_email}"
-            }
-            
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            _firebase_initialized = True
-            logger.info("✅ Firebase Admin SDK initialized successfully using environment variables")
+            try:
+                cred = credentials.Certificate(service_account_path)
+                firebase_admin.initialize_app(cred)
+                _firebase_initialized = True
+                logger.info("✅ Firebase Admin SDK initialized successfully using SECURE service account file")
+                return
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize Firebase with service account file: {e}")
+                raise
                 
         except Exception as e:
-            if settings.is_development:
-                logger.warning(f"Development mode: Firebase initialization failed, continuing without Firebase: {e}")
-                _firebase_initialized = True
-                return
-            else:
-                logger.error(f"Firebase initialization failed: {e}")
-                raise RuntimeError(f"Failed to initialize Firebase Admin SDK: {str(e)}")
+            logger.error(f"Firebase initialization failed: {e}")
+            raise RuntimeError(f"Failed to initialize Firebase Admin SDK: {str(e)}")
 
 
 def verify_firebase_token(id_token: str) -> Dict[str, Any]:
@@ -149,6 +145,9 @@ def verify_firebase_token(id_token: str) -> Dict[str, Any]:
         }
     
     try:
+        # Debug JWT inspection (only when FIREBASE_DEBUG=1)
+        _peek_jwt_claims(id_token)
+        
         initialize_firebase()
         decoded_token = auth.verify_id_token(id_token, check_revoked=True)
         

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -90,6 +90,7 @@ async def health_check_simple():
 ALLOWED_ORIGINS = [
     "https://www.titletesterpro.com",
     "https://titletesterpro.com",
+    "https://app.titletesterpro.com",
     "http://localhost:5173"
 ]
 
@@ -166,9 +167,12 @@ def _peek_jwt(jwt_str: str):
     except Exception as e:
         logger.error(f"[JWT PEEK] Failed to inspect token: {e}")
 
-@app.get("/debug/firebase-config-method")
-async def debug_firebase_config_method():
-    """Debug endpoint to verify Firebase configuration method"""
+@app.get("/debug/firebase")
+async def debug_firebase():
+    """Debug Firebase configuration when FIREBASE_DEBUG=1"""
+    if not os.getenv("FIREBASE_DEBUG", "0") == "1":
+        raise HTTPException(status_code=404, detail="Debug endpoint not enabled")
+    
     config_method = "UNKNOWN"
     google_creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     
@@ -179,23 +183,23 @@ async def debug_firebase_config_method():
         config_method = "ENVIRONMENT_VARIABLES"
         file_exists = False
     
+    from . import firebase_auth
+    
     return {
         "configuration_method": config_method,
         "google_application_credentials": google_creds_path,
         "secret_file_exists": file_exists,
-        "environment_variables_present": {
-            "FIREBASE_PROJECT_ID": bool(os.getenv("FIREBASE_PROJECT_ID")),
-            "FIREBASE_CLIENT_EMAIL": bool(os.getenv("FIREBASE_CLIENT_EMAIL")),
-            "FIREBASE_PRIVATE_KEY": bool(os.getenv("FIREBASE_PRIVATE_KEY")),
-            "FIREBASE_PRIVATE_KEY_ID": bool(os.getenv("FIREBASE_PRIVATE_KEY_ID")),
-            "FIREBASE_CLIENT_ID": bool(os.getenv("FIREBASE_CLIENT_ID"))
-        },
-        "recommendation": "SECRET_FILE" if google_creds_path else "ADD_GOOGLE_APPLICATION_CREDENTIALS"
+        "firebase_initialized": firebase_auth._firebase_initialized,
+        "allow_env_fallback": os.getenv("ALLOW_ENV_FALLBACK", "0") == "1",
+        "firebase_debug_enabled": os.getenv("FIREBASE_DEBUG", "0") == "1",
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 @app.get("/debug/cors-domains")
 async def debug_cors_domains():
-    """Debug endpoint to check CORS configuration"""
+    """Debug CORS configuration when FIREBASE_DEBUG=1"""
+    if not os.getenv("FIREBASE_DEBUG", "0") == "1":
+        raise HTTPException(status_code=404, detail="Debug endpoint not enabled")
     return {
         "cors_configuration": {
             "allowed_origins": ALLOWED_ORIGINS,
@@ -240,8 +244,9 @@ async def firebase_auth(request: Request):
         
         logger.info(f"[AUTH] Received token (length: {len(id_token)})")
         
-        # 🔍 INSPECT TOKEN BEFORE VERIFICATION
-        _peek_jwt(id_token)
+        # 🔍 INSPECT TOKEN BEFORE VERIFICATION (only in debug mode)
+        if os.getenv("FIREBASE_DEBUG", "0") == "1":
+            _peek_jwt(id_token)
         
         # Verify Firebase token
         decoded_token = verify_firebase_token(id_token)

@@ -6,13 +6,44 @@ function clean(v?: string) {
   return (v ?? '').trim().replace(/\s+/g, '');
 }
 
-const firebaseConfig = {
-  apiKey: clean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
-  authDomain: clean(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN), // critical!!!
-  projectId: clean(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
-  appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
-  messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
-};
+function validateEnvVar(name: string, value?: string): string {
+  if (!value || value.trim() === '') {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return clean(value);
+}
+
+// Validate critical environment variables
+let firebaseConfig: any;
+try {
+  firebaseConfig = {
+    apiKey: validateEnvVar('NEXT_PUBLIC_FIREBASE_API_KEY', process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+    authDomain: validateEnvVar('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+    projectId: validateEnvVar('NEXT_PUBLIC_FIREBASE_PROJECT_ID', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+    appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
+    messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+  };
+  
+  // Validate project ID matches expected value
+  const expectedProjectId = 'titletesterpro';
+  if (firebaseConfig.projectId !== expectedProjectId) {
+    console.error(`❌ Firebase project mismatch: got '${firebaseConfig.projectId}', expected '${expectedProjectId}'`);
+    throw new Error(`Firebase project ID mismatch: expected '${expectedProjectId}', got '${firebaseConfig.projectId}'`);
+  }
+  
+  console.log('✅ Firebase configuration validated successfully');
+} catch (error) {
+  console.error('❌ Firebase configuration validation failed:', error);
+  // Use fallback minimal config for development
+  firebaseConfig = {
+    apiKey: 'missing-api-key',
+    authDomain: 'missing.firebaseapp.com',
+    projectId: 'missing-project',
+    appId: 'missing-app-id',
+    messagingSenderId: '000000000000',
+  };
+  console.warn('⚠️ Using fallback Firebase configuration - authentication will fail');
+}
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
@@ -72,8 +103,27 @@ export const signInAndVerify = async () => {
     console.log("✅ Fresh ID token obtained");
     console.log("Token preview:", `${idToken.substring(0, 50)}...`);
     
-    // Step 3: Send to backend
-    const apiUrl = "https://ttprov4-k58o.onrender.com/api/auth/firebase";
+    // Step 3: Validate token format and payload
+    try {
+      const tokenPayload = JSON.parse(atob(idToken.split('.')[1]));
+      console.log("🔍 Token validation:", {
+        aud: tokenPayload.aud,
+        iss: tokenPayload.iss,
+        projectMatch: tokenPayload.aud === firebaseConfig.projectId,
+        expectedProject: firebaseConfig.projectId
+      });
+      
+      if (tokenPayload.aud !== firebaseConfig.projectId) {
+        console.error(`❌ Token audience mismatch: token=${tokenPayload.aud}, config=${firebaseConfig.projectId}`);
+        throw new Error('Token audience does not match Firebase project configuration');
+      }
+    } catch (tokenError) {
+      console.warn("⚠️ Token validation failed:", tokenError);
+    }
+    
+    // Step 4: Send to backend
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+    const apiUrl = `${apiBaseUrl}/api/auth/firebase`;
     console.log(`📤 Sending to backend: ${apiUrl}`);
     
     const requestPayload = {
@@ -146,7 +196,22 @@ export const debugFirebaseConfig = () => {
   const projectMatch = firebaseConfig.projectId === expectedProjectId;
   console.log(`  Project Match: ${projectMatch ? "✅ MATCH" : "❌ MISMATCH"} (expected: ${expectedProjectId})`);
   
-  return firebaseConfig;
+  console.log(`  API Base URL: ${process.env.NEXT_PUBLIC_API_BASE_URL || 'Using default: https://ttprov4-k58o.onrender.com'}`);
+  
+  return {
+    config: firebaseConfig,
+    environment: {
+      NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    },
+    validation: {
+      projectMatch,
+      expectedProject: expectedProjectId,
+      configValid: firebaseConfig.projectId !== 'missing-project'
+    }
+  };
 };
 
 // Make debugging function available globally in development
