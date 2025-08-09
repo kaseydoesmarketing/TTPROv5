@@ -113,59 +113,7 @@ app.include_router(admin_router)
 import base64
 import json
 
-def _peek_jwt(jwt_str: str):
-    """Safely decode and inspect JWT token claims without verification"""
-    try:
-        if not jwt_str or "." not in jwt_str:
-            logger.warning("[JWT PEEK] Invalid token format")
-            return
-            
-        parts = jwt_str.split(".")
-        if len(parts) != 3:
-            logger.warning(f"[JWT PEEK] Invalid JWT parts count: {len(parts)}")
-            return
-            
-        hdr_b64, payload_b64, _sig = parts
-        
-        # Add padding for base64 decoding
-        def pad(s): 
-            return s + "=" * (-len(s) % 4)
-        
-        # Decode header and payload safely
-        try:
-            header = json.loads(base64.urlsafe_b64decode(pad(hdr_b64)).decode())
-            payload = json.loads(base64.urlsafe_b64decode(pad(payload_b64)).decode())
-        except Exception as e:
-            logger.warning(f"[JWT PEEK] Decode failed: {e}")
-            return
-        
-        # Extract only safe claims for debugging
-        safe_payload = {
-            k: v for k, v in payload.items() 
-            if k in ("iss", "aud", "sub", "user_id", "firebase", "exp", "iat", "auth_time")
-        }
-        
-        logger.info(f"[JWT PEEK] header={header}")
-        logger.info(f"[JWT PEEK] payload={safe_payload}")
-        
-        # Critical project checks
-        expected_project = "titletesterpro"
-        aud = safe_payload.get("aud")
-        iss = safe_payload.get("iss")
-        
-        if aud != expected_project:
-            logger.error(f"[JWT PEEK] ❌ AUDIENCE MISMATCH: got '{aud}', expected '{expected_project}'")
-        else:
-            logger.info(f"[JWT PEEK] ✅ Audience matches: {aud}")
-            
-        expected_iss = f"https://securetoken.google.com/{expected_project}"
-        if iss != expected_iss:
-            logger.error(f"[JWT PEEK] ❌ ISSUER MISMATCH: got '{iss}', expected '{expected_iss}'")
-        else:
-            logger.info(f"[JWT PEEK] ✅ Issuer matches: {iss}")
-            
-    except Exception as e:
-        logger.error(f"[JWT PEEK] Failed to inspect token: {e}")
+# Removed duplicate _peek_jwt function - using _peek_jwt_claims from firebase_auth.py instead
 
 @app.get("/debug/firebase")
 async def debug_firebase():
@@ -249,9 +197,10 @@ async def firebase_auth(request: Request):
         
         logger.info(f"[AUTH] Received token (length: {len(id_token)})")
         
-        # 🔍 INSPECT TOKEN BEFORE VERIFICATION (only in debug mode)
-        if os.getenv("FIREBASE_DEBUG", "0") == "1":
-            _peek_jwt(id_token)
+        # 🔍 INSPECT TOKEN BEFORE VERIFICATION (temporarily enabled for debugging)
+        # Enable debug temporarily to see authentication details
+        from .firebase_auth import _peek_jwt_claims
+        _peek_jwt_claims(id_token)
         
         # Verify Firebase token
         decoded_token = verify_firebase_token(id_token)
@@ -300,15 +249,18 @@ async def firebase_auth(request: Request):
         response = JSONResponse(content=response_data)
         
         # Set secure HTTP-only session cookie
+        # Use None for domain to work with both titletesterpro.com and vercel deployments
         response.set_cookie(
             key="session_token",
             value=session_token,
             max_age=7 * 24 * 60 * 60,  # 7 days in seconds
             httponly=True,
             secure=True,  # HTTPS only
-            samesite="lax",
-            domain=".titletesterpro.com"  # Allow subdomain access
+            samesite="lax"
+            # domain=".titletesterpro.com"  # Removed to make it work with all domains
         )
+        
+        logger.info(f"[AUTH] Set session cookie for user {user.id}")
         
         return response
         
@@ -338,8 +290,8 @@ async def logout(current_user: User = Depends(get_current_user_session), db: Ses
             max_age=0,  # Expire immediately
             httponly=True,
             secure=True,
-            samesite="lax",
-            domain=".titletesterpro.com"
+            samesite="lax"
+            # domain=".titletesterpro.com"  # Removed to match login cookie
         )
         
         return response
