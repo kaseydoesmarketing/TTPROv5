@@ -107,6 +107,279 @@ app.include_router(channel_router)
 app.include_router(billing_router, prefix="/api")
 app.include_router(admin_router)
 
+# Additional API routes for dashboard
+@app.post("/api/auth/firebase")
+async def firebase_auth(request: dict, db: Session = Depends(get_db)):
+    """Handle Firebase ID token authentication"""
+    try:
+        id_token = request.get("idToken")
+        if not id_token:
+            raise HTTPException(status_code=400, detail="ID token is required")
+        
+        # Verify Firebase token
+        decoded_token = verify_firebase_token(id_token)
+        if not decoded_token:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Create or get user
+        user = db.query(User).filter(User.firebase_uid == decoded_token['uid']).first()
+        if not user:
+            user = User(
+                firebase_uid=decoded_token['uid'],
+                email=decoded_token.get('email'),
+                display_name=decoded_token.get('name'),
+            )
+            db.add(user)
+            db.commit()
+        
+        return {"ok": True, "user_id": user.id}
+    except Exception as e:
+        logger.error(f"Firebase auth error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
+@app.get("/api/campaigns")
+async def get_campaigns(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
+    """Get user's campaigns - maps to existing AB tests"""
+    try:
+        from .models import ABTest
+        campaigns = db.query(ABTest).filter(ABTest.user_id == current_user.id).all()
+        
+        result = []
+        for campaign in campaigns:
+            result.append({
+                "id": str(campaign.id),
+                "status": campaign.status,
+                "titles": campaign.title_variations,
+                "videoIds": [campaign.video_id] if campaign.video_id else [],
+                "channelId": campaign.channel_id or "",
+                "intervalMinutes": 60,  # Default
+                "durationHours": 24,   # Default
+                "startedAt": campaign.created_at.isoformat() if campaign.created_at else None,
+                "endsAt": campaign.created_at.isoformat() if campaign.created_at else None,
+            })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching campaigns: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch campaigns")
+
+@app.get("/api/campaigns/kpis")
+async def get_campaign_kpis(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
+    """Get campaign KPIs"""
+    try:
+        from .models import ABTest
+        from sqlalchemy import func
+        
+        total_campaigns = db.query(ABTest).filter(ABTest.user_id == current_user.id).count()
+        running_now = db.query(ABTest).filter(
+            ABTest.user_id == current_user.id,
+            ABTest.status == 'running'
+        ).count()
+        
+        # Count total title variations
+        campaigns = db.query(ABTest).filter(ABTest.user_id == current_user.id).all()
+        titles_tested = sum(len(c.title_variations) for c in campaigns if c.title_variations)
+        
+        return {
+            "totalCampaigns": total_campaigns,
+            "runningNow": running_now,
+            "titlesTested": titles_tested,
+            "avgLift": None  # Could calculate from test results
+        }
+    except Exception as e:
+        logger.error(f"Error fetching KPIs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch KPIs")
+
+@app.get("/api/campaigns/activity")
+async def get_campaign_activity(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
+    """Get campaign activity feed"""
+    try:
+        # Return dummy activity for now
+        return [
+            {
+                "id": "1",
+                "timestamp": datetime.utcnow().isoformat(),
+                "type": "campaign_created",
+                "message": "New campaign created successfully"
+            }
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching activity: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch activity")
+
+@app.post("/api/campaigns")
+async def create_campaign(
+    campaign_data: dict,
+    current_user: User = Depends(get_current_firebase_user),
+    db: Session = Depends(get_db)
+):
+    """Create new campaign - maps to AB test creation"""
+    try:
+        from .models import ABTest
+        
+        # Create new AB test
+        ab_test = ABTest(
+            user_id=current_user.id,
+            channel_id=campaign_data.get('channelId'),
+            video_id=campaign_data.get('videoIds', [None])[0],  # Take first video
+            title_variations=campaign_data.get('titles', []),
+            status='created'
+        )
+        
+        db.add(ab_test)
+        db.commit()
+        
+        return {"id": str(ab_test.id), "status": "created"}
+    except Exception as e:
+        logger.error(f"Error creating campaign: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create campaign")
+
+@app.post("/api/campaigns/{campaign_id}/pause")
+async def pause_campaign(
+    campaign_id: str,
+    current_user: User = Depends(get_current_firebase_user),
+    db: Session = Depends(get_db)
+):
+    """Pause campaign"""
+    try:
+        from .models import ABTest
+        
+        campaign = db.query(ABTest).filter(
+            ABTest.id == int(campaign_id),
+            ABTest.user_id == current_user.id
+        ).first()
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        campaign.status = 'paused'
+        db.commit()
+        
+        return {"status": "paused"}
+    except Exception as e:
+        logger.error(f"Error pausing campaign: {e}")
+        raise HTTPException(status_code=500, detail="Failed to pause campaign")
+
+@app.post("/api/campaigns/{campaign_id}/resume")
+async def resume_campaign(
+    campaign_id: str,
+    current_user: User = Depends(get_current_firebase_user),
+    db: Session = Depends(get_db)
+):
+    """Resume campaign"""
+    try:
+        from .models import ABTest
+        
+        campaign = db.query(ABTest).filter(
+            ABTest.id == int(campaign_id),
+            ABTest.user_id == current_user.id
+        ).first()
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        campaign.status = 'running'
+        db.commit()
+        
+        return {"status": "running"}
+    except Exception as e:
+        logger.error(f"Error resuming campaign: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resume campaign")
+
+@app.post("/api/campaigns/{campaign_id}/stop")
+async def stop_campaign(
+    campaign_id: str,
+    current_user: User = Depends(get_current_firebase_user),
+    db: Session = Depends(get_db)
+):
+    """Stop campaign"""
+    try:
+        from .models import ABTest
+        
+        campaign = db.query(ABTest).filter(
+            ABTest.id == int(campaign_id),
+            ABTest.user_id == current_user.id
+        ).first()
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        campaign.status = 'stopped'
+        db.commit()
+        
+        return {"status": "stopped"}
+    except Exception as e:
+        logger.error(f"Error stopping campaign: {e}")
+        raise HTTPException(status_code=500, detail="Failed to stop campaign")
+
+@app.get("/api/youtube/channels")
+async def get_youtube_channels(current_user: User = Depends(get_current_firebase_user), db: Session = Depends(get_db)):
+    """Get user's YouTube channels"""
+    try:
+        from .models import YouTubeChannel
+        
+        channels = db.query(YouTubeChannel).filter(YouTubeChannel.user_id == current_user.id).all()
+        
+        result = []
+        for channel in channels:
+            result.append({
+                "id": channel.channel_id,
+                "title": channel.channel_name,
+                "thumbnail": channel.thumbnail_url
+            })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching YouTube channels: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch channels")
+
+@app.get("/api/youtube/videos")
+async def get_youtube_videos(
+    q: str = "",
+    page: str = "",
+    current_user: User = Depends(get_current_firebase_user)
+):
+    """Get YouTube videos with search and pagination"""
+    try:
+        # This would normally call YouTube API
+        # For now, return dummy data
+        return {
+            "items": [
+                {
+                    "id": "video1",
+                    "title": "Sample Video 1",
+                    "thumbnail": "https://i.ytimg.com/vi/sample1/mqdefault.jpg"
+                },
+                {
+                    "id": "video2", 
+                    "title": "Sample Video 2",
+                    "thumbnail": "https://i.ytimg.com/vi/sample2/mqdefault.jpg"
+                }
+            ],
+            "nextPageToken": None
+        }
+    except Exception as e:
+        logger.error(f"Error fetching YouTube videos: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch videos")
+
+@app.post("/api/billing/portal")
+async def create_billing_portal(current_user: User = Depends(get_current_firebase_user)):
+    """Create Stripe billing portal session"""
+    try:
+        import stripe
+        import os
+        
+        stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+        
+        # This would normally create a proper portal session
+        # For now, return a dummy URL
+        return {
+            "url": "https://billing.stripe.com/session/test_portal"
+        }
+    except Exception as e:
+        logger.error(f"Error creating billing portal: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create billing portal")
+
 @app.on_event("startup")
 async def startup_event():
     """Non-blocking startup - health endpoints available immediately"""
