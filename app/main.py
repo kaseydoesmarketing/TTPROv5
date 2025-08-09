@@ -19,6 +19,7 @@ from .auth_dependencies import get_current_firebase_user
 import logging
 import asyncio
 import requests
+import os
 from firebase_admin import auth as firebase_auth
 import jwt
 from jwt import PyJWKClient
@@ -387,6 +388,13 @@ async def startup_event():
     logger.info(f"🔧 Environment: {settings.environment}")
     logger.info(f"🔧 Database URL configured: {'Yes' if settings.database_url else 'No'}")
     logger.info(f"🔧 Firebase Project ID: {settings.firebase_project_id[:10]}..." if settings.firebase_project_id else "Not set")
+    
+    # Log Firebase configuration method
+    if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        logger.info(f"🔐 Firebase: Using SECURE service account file: {os.getenv('GOOGLE_APPLICATION_CREDENTIALS')}")
+    else:
+        logger.warning("⚠️ Firebase: Using FALLBACK environment variables (less secure)")
+        logger.warning("⚠️ Recommend setting GOOGLE_APPLICATION_CREDENTIALS to service account file path")
     
     # Initialize startup status first - app can serve health checks immediately
     app.state.startup_status = {

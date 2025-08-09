@@ -4,6 +4,7 @@ from .config import settings
 import logging
 from typing import Dict, Any, Optional
 import json
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -11,15 +12,38 @@ _firebase_initialized = False
 
 
 def initialize_firebase():
-    """Initialize Firebase Admin SDK with proper error handling and singleton pattern"""
+    """Initialize Firebase Admin SDK with secure service account file or fallback to environment variables"""
     global _firebase_initialized
     
     if _firebase_initialized:
         return
         
-    if settings.is_development:
+    if not firebase_admin._apps:
         try:
-            if not firebase_admin._apps:
+            # Method 1: Use GOOGLE_APPLICATION_CREDENTIALS (Render Secret File) - PREFERRED
+            if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+                service_account_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+                logger.info(f"Using Firebase service account file: {service_account_path}")
+                
+                # Verify file exists and is readable
+                if not os.path.exists(service_account_path):
+                    raise FileNotFoundError(f"Firebase service account file not found: {service_account_path}")
+                
+                try:
+                    cred = credentials.Certificate(service_account_path)
+                    firebase_admin.initialize_app(cred)
+                    _firebase_initialized = True
+                    logger.info("✅ Firebase Admin SDK initialized successfully using service account file")
+                    return
+                except Exception as e:
+                    logger.error(f"❌ Failed to initialize Firebase with service account file: {e}")
+                    raise
+            
+            # Method 2: Fallback to environment variables (LESS SECURE)
+            logger.warning("⚠️ GOOGLE_APPLICATION_CREDENTIALS not set, falling back to environment variables")
+            
+            if settings.is_development:
+                # Development mode: more lenient error handling
                 required_fields = [
                     settings.firebase_project_id,
                     settings.firebase_private_key_id,
@@ -38,30 +62,8 @@ def initialize_firebase():
                     logger.warning("Development mode: Skipping Firebase initialization due to missing credentials")
                     _firebase_initialized = True
                     return
-                
-                cred_dict = {
-                    "type": "service_account",
-                    "project_id": settings.firebase_project_id,
-                    "private_key_id": settings.firebase_private_key_id,
-                    "private_key": settings.firebase_private_key.replace('\\n', '\n'),
-                    "client_email": settings.firebase_client_email,
-                    "client_id": settings.firebase_client_id,
-                    "auth_uri": settings.firebase_auth_uri,
-                    "token_uri": settings.firebase_token_uri,
-                }
-                
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-                _firebase_initialized = True
-                logger.info("Firebase Admin SDK initialized successfully")
-                
-        except Exception as e:
-            logger.warning(f"Development mode: Firebase initialization failed, continuing without Firebase: {e}")
-            _firebase_initialized = True
-            return
-    else:
-        if not firebase_admin._apps:
-            try:
+            else:
+                # Production mode: strict validation
                 required_fields = [
                     settings.firebase_project_id,
                     settings.firebase_private_key_id,
@@ -84,24 +86,32 @@ def initialize_firebase():
                         missing.append("FIREBASE_CLIENT_ID")
                     
                     raise ValueError(f"Missing required Firebase Admin SDK configuration: {', '.join(missing)}")
+            
+            # Create credential dictionary from environment variables
+            cred_dict = {
+                "type": "service_account",
+                "project_id": settings.firebase_project_id,
+                "private_key_id": settings.firebase_private_key_id,
+                "private_key": settings.firebase_private_key.replace('\\n', '\n'),
+                "client_email": settings.firebase_client_email,
+                "client_id": settings.firebase_client_id,
+                "auth_uri": settings.firebase_auth_uri,
+                "token_uri": settings.firebase_token_uri,
+                "auth_provider_x509_cert_url": settings.firebase_auth_provider_x509_cert_url,
+                "client_x509_cert_url": settings.firebase_client_x509_cert_url or f"https://www.googleapis.com/robot/v1/metadata/x509/{settings.firebase_client_email}"
+            }
+            
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            _firebase_initialized = True
+            logger.info("✅ Firebase Admin SDK initialized successfully using environment variables")
                 
-                cred_dict = {
-                    "type": "service_account",
-                    "project_id": settings.firebase_project_id,
-                    "private_key_id": settings.firebase_private_key_id,
-                    "private_key": settings.firebase_private_key.replace('\\n', '\n'),
-                    "client_email": settings.firebase_client_email,
-                    "client_id": settings.firebase_client_id,
-                    "auth_uri": settings.firebase_auth_uri,
-                    "token_uri": settings.firebase_token_uri,
-                }
-                
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
+        except Exception as e:
+            if settings.is_development:
+                logger.warning(f"Development mode: Firebase initialization failed, continuing without Firebase: {e}")
                 _firebase_initialized = True
-                logger.info("Firebase Admin SDK initialized successfully")
-                
-            except Exception as e:
+                return
+            else:
                 logger.error(f"Firebase initialization failed: {e}")
                 raise RuntimeError(f"Failed to initialize Firebase Admin SDK: {str(e)}")
 

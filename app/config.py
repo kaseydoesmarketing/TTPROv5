@@ -12,12 +12,17 @@ class Settings(BaseSettings):
     # If not set, fallback to local Redis URL
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
-    # Firebase Configuration (with Railway-compatible defaults)
-    firebase_project_id: str = "titletesterpro"
-    firebase_private_key_id: str = "emergency-fallback-key"
-    firebase_private_key: str = "-----BEGIN PRIVATE KEY-----\nEMERGENCY_FALLBACK_KEY\n-----END PRIVATE KEY-----"
-    firebase_client_email: str = "firebase-adminsdk@titletesterpro.iam.gserviceaccount.com"
-    firebase_client_id: str = "100000000000000000000"
+    # Firebase Configuration - SECURE METHOD (Render Secret File)
+    # Preferred: Set GOOGLE_APPLICATION_CREDENTIALS=/opt/render/project/secrets/service-account.json
+    # This points to a Render Secret File containing the complete Firebase service account JSON
+    
+    # Firebase Configuration - FALLBACK METHOD (Environment Variables)
+    # Only used if GOOGLE_APPLICATION_CREDENTIALS is not set
+    firebase_project_id: str = os.getenv("FIREBASE_PROJECT_ID", "titletesterpro")
+    firebase_private_key_id: str = os.getenv("FIREBASE_PRIVATE_KEY_ID", "emergency-fallback-key")
+    firebase_private_key: str = os.getenv("FIREBASE_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nEMERGENCY_FALLBACK_KEY\n-----END PRIVATE KEY-----")
+    firebase_client_email: str = os.getenv("FIREBASE_CLIENT_EMAIL", "firebase-adminsdk@titletesterpro.iam.gserviceaccount.com")
+    firebase_client_id: str = os.getenv("FIREBASE_CLIENT_ID", "100000000000000000000")
     firebase_auth_uri: str = "https://accounts.google.com/o/oauth2/auth"
     firebase_token_uri: str = "https://oauth2.googleapis.com/token"
     firebase_auth_provider_x509_cert_url: str = "https://www.googleapis.com/oauth2/v1/certs"
@@ -50,7 +55,11 @@ class Settings(BaseSettings):
         return self.environment.lower() in ["production", "prod"]
     
     def get_firebase_service_account_dict(self) -> dict:
-        """Get Firebase service account configuration as dictionary"""
+        """Get Firebase service account configuration as dictionary (FALLBACK ONLY)
+        
+        ⚠️ WARNING: This method should only be used when GOOGLE_APPLICATION_CREDENTIALS is not available.
+        The preferred method is to use a Render Secret File pointed to by GOOGLE_APPLICATION_CREDENTIALS.
+        """
         return {
             "type": "service_account",
             "project_id": self.firebase_project_id,
@@ -63,6 +72,11 @@ class Settings(BaseSettings):
             "auth_provider_x509_cert_url": self.firebase_auth_provider_x509_cert_url,
             "client_x509_cert_url": self.firebase_client_x509_cert_url or f"https://www.googleapis.com/robot/v1/metadata/x509/{self.firebase_client_email}"
         }
+    
+    @property
+    def is_using_secure_firebase_config(self) -> bool:
+        """Check if using secure Firebase configuration (service account file)"""
+        return bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
     
     class Config:
         env_file = ".env"
