@@ -96,8 +96,11 @@ ALLOWED_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https://.*ttpro[-]?(ov4|ov5|v5)?.*vercel\.app$",
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+    allow_headers=["Authorization","Content-Type","X-Requested-With","Accept"],
+)?.*vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
     allow_headers=["Authorization","Content-Type","X-Requested-With","Accept"],
@@ -118,7 +121,7 @@ import json
 @app.get("/debug/firebase")
 async def debug_firebase():
     """Debug Firebase configuration when FIREBASE_DEBUG=1"""
-    if not os.getenv("FIREBASE_DEBUG", "0") == "1":
+    if not settings.is_debug_mode:
         raise HTTPException(status_code=404, detail="Debug endpoint not enabled")
     
     config_method = "UNKNOWN"
@@ -146,7 +149,7 @@ async def debug_firebase():
 @app.get("/debug/cors-domains")
 async def debug_cors_domains():
     """Debug CORS configuration when FIREBASE_DEBUG=1"""
-    if not os.getenv("FIREBASE_DEBUG", "0") == "1":
+    if not settings.is_debug_mode:
         raise HTTPException(status_code=404, detail="Debug endpoint not enabled")
     return {
         "cors_configuration": {
@@ -251,14 +254,14 @@ async def firebase_auth(request: Request):
         # Set secure HTTP-only session cookie
         # Use None for domain to work with both titletesterpro.com and vercel deployments
         response.set_cookie(
-            key="session_token",
-            value=session_token,
-            max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-            httponly=True,
-            secure=True,  # HTTPS only
-            samesite="lax"
-            # domain=".titletesterpro.com"  # Removed to make it work with all domains
-        )
+    key="session_token",
+    value=session_jwt if "session_jwt" in globals() else token,
+    httponly=True,
+    secure=True,
+    samesite="none",
+    domain=".titletesterpro.com",
+    max_age=604800
+)
         
         logger.info(f"[AUTH] Set session cookie for user {user.id}")
         
@@ -285,14 +288,14 @@ async def logout(current_user: User = Depends(get_current_user_session), db: Ses
         
         # Clear the session cookie
         response.set_cookie(
-            key="session_token",
-            value="",
-            max_age=0,  # Expire immediately
-            httponly=True,
-            secure=True,
-            samesite="lax"
-            # domain=".titletesterpro.com"  # Removed to match login cookie
-        )
+    key="session_token",
+    value=session_jwt if "session_jwt" in globals() else token,
+    httponly=True,
+    secure=True,
+    samesite="none",
+    domain=".titletesterpro.com",
+    max_age=604800
+)
         
         return response
         
