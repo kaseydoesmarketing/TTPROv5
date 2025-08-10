@@ -1,3 +1,4 @@
+from .settings import settings
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from starlette.middleware.cors import CORSMiddleware
@@ -155,7 +156,7 @@ async def debug_cors_domains():
     return {
         "cors_configuration": {
             "allowed_origins": ALLOWED_ORIGINS,
-            "allow_origin_regex": r"^https://.*vercel\.app$",,
+            "allow_origin_regex": r"^https://.*vercel\.app$",,,
             "environment_cors": os.getenv("CORS_ORIGINS", "Not set")
         },
         "expected_origins": [
