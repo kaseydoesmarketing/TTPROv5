@@ -86,19 +86,28 @@ async def health_check_simple():
         "service": "titletesterpro-api"
     }
 
-# Production-grade CORS configuration for session cookies
-ALLOWED_ORIGINS = [
-    "https://www.titletesterpro.com",
-    "https://titletesterpro.com", 
-    "https://app.titletesterpro.com",
-    "http://localhost:5173",
-    "http://localhost:3000"
-]
+# Parse CORS origins from environment variable
+def parse_cors_origins():
+    cors_env = os.getenv("CORS_ORIGINS", "")
+    if cors_env:
+        origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+    else:
+        # Default origins if not configured
+        origins = [
+            "https://www.titletesterpro.com",
+            "https://titletesterpro.com",
+            "https://app.titletesterpro.com",
+            "http://localhost:5173",
+            "http://localhost:3000"
+        ]
+    return origins
+
+ALLOWED_ORIGINS = parse_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https://.*ttpro[-]?(ov4|ov5|v5)?.*vercel\.app$",
+    allow_origin_regex=r"^https://.*ttpro.*vercel\.app$",
     allow_credentials=True,  # CRITICAL: Required for session cookies
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept"],
@@ -1323,6 +1332,43 @@ def job_health():
         }
 
 
+# Debug endpoints (TEMPORARY - only when FIREBASE_DEBUG=1)
+@app.get("/debug/firebase")
+def debug_firebase():
+    """Debug Firebase configuration (only when FIREBASE_DEBUG=1)"""
+    if os.getenv("FIREBASE_DEBUG", "0") != "1":
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    import firebase_admin
+    from pathlib import Path
+    
+    service_account_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
+    file_exists = Path(service_account_path).exists() if service_account_path else False
+    
+    return {
+        "configuration_method": "SECRET_FILE" if service_account_path else "ENV_FALLBACK",
+        "file_exists": file_exists,
+        "firebase_initialized": bool(firebase_admin._apps),
+        "google_application_credentials": Path(service_account_path).name if service_account_path else None,
+        "allow_env_fallback": os.environ.get("ALLOW_ENV_FALLBACK", "0"),
+        "firebase_debug_enabled": True,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get("/debug/cors-domains")
+def debug_cors_domains():
+    """Debug CORS configuration (only when FIREBASE_DEBUG=1)"""
+    if os.getenv("FIREBASE_DEBUG", "0") != "1":
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    return {
+        "allow_origins": ALLOWED_ORIGINS,
+        "allow_origin_regex": r"^https://.*ttpro.*vercel\.app$",
+        "allow_credentials": True,
+        "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        "allow_headers": ["Authorization", "Content-Type", "X-Requested-With", "Accept"],
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 class UserRegistrationRequest(BaseModel):
     access_token: Optional[str] = None
