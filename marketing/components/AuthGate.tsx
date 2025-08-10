@@ -13,32 +13,61 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check if Firebase auth is available
+    console.log('🔍 AuthGate: Checking Firebase auth initialization...');
+    console.log('Auth instance:', auth);
+    console.log('Environment check:', {
+      NEXT_PUBLIC_FIREBASE_API_KEY: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    });
+    
+    if (!auth) {
+      console.error('❌ Firebase auth not initialized');
+      console.error('This usually means environment variables are missing or Firebase failed to initialize');
+      setError('Firebase authentication not available - check console for details');
+      setLoading(false);
+      return;
+    } else {
+      console.log('✅ Firebase auth instance found');
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
+      try {
+        if (user) {
           const idToken = await user.getIdToken();
           await postIdToken(idToken);
           setUser(user);
-        } catch (error) {
-          console.error('Failed to authenticate with backend:', error);
+        } else {
+          setUser(null);
         }
-      } else {
-        setUser(null);
+      } catch (error) {
+        console.error('Authentication error:', error);
+        setError('Authentication failed');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   const handleSignIn = async () => {
+    if (!auth || !signInWithGoogle) {
+      setError('Authentication not available');
+      return;
+    }
+    
     setSigningIn(true);
+    setError(null);
     try {
       await signInWithGoogle();
     } catch (error) {
       console.error('Failed to sign in:', error);
+      setError('Sign in failed. Please try again.');
     } finally {
       setSigningIn(false);
     }
@@ -48,6 +77,32 @@ export default function AuthGate({ children }: AuthGateProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-2xl shadow-lg border border-red-200 max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full mx-auto mb-6 flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">Authentication Error</h1>
+            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-slate-500 mb-8 text-sm">Please check your environment configuration or try refreshing the page.</p>
+            
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

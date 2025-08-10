@@ -22,29 +22,51 @@ let googleProvider: any;
 
 if (typeof window !== 'undefined') {
   // Client-side initialization
-  const sanitizedEnv = validateAndSanitizeEnv();
-
+  let sanitizedEnv;
+  
   try {
-    firebaseConfig = {
-      apiKey: sanitizedEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: sanitizedEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: sanitizedEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
-      messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
-    };
-    
-    console.log('✅ Firebase configuration loaded with sanitized environment');
+    sanitizedEnv = validateAndSanitizeEnv();
+    console.log('✅ Environment validation passed');
   } catch (error) {
-    console.error('❌ Firebase configuration validation failed:', error);
-    // Use fallback minimal config for development
-    firebaseConfig = {
-      apiKey: 'missing-api-key',
-      authDomain: 'missing.firebaseapp.com',
-      projectId: 'missing-project',
-      appId: 'missing-app-id',
-      messagingSenderId: '000000000000',
+    console.error('❌ Environment validation failed:', error);
+    // Fallback to direct environment access
+    sanitizedEnv = {
+      NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
     };
-    console.warn('⚠️ Using fallback Firebase configuration - authentication will fail');
+    console.warn('⚠️ Using direct environment access as fallback');
+  }
+
+  // Always try to create a working Firebase config
+  firebaseConfig = {
+    apiKey: sanitizedEnv.NEXT_PUBLIC_FIREBASE_API_KEY || 'missing-api-key',
+    authDomain: sanitizedEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'missing.firebaseapp.com',
+    projectId: sanitizedEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'missing-project',
+    appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID) || 'missing-app-id',
+    messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID) || '000000000000',
+  };
+  
+  console.log('🔥 Firebase configuration created:');
+  console.log(`  Project ID: ${firebaseConfig.projectId}`);
+  console.log(`  Auth Domain: ${firebaseConfig.authDomain}`);
+  console.log(`  API Key: ${firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 10) + '...' : 'missing'}`);
+  
+  // Validate we have the minimum required values
+  const hasRequiredFields = firebaseConfig.apiKey !== 'missing-api-key' && 
+                           firebaseConfig.projectId !== 'missing-project' && 
+                           firebaseConfig.authDomain !== 'missing.firebaseapp.com';
+  
+  if (!hasRequiredFields) {
+    console.error('❌ Critical Firebase configuration missing - authentication will not work');
+    console.error('Check that these environment variables are set:', {
+      NEXT_PUBLIC_FIREBASE_API_KEY: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    });
+  } else {
+    console.log('✅ Firebase configuration has required fields');
   }
 
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
