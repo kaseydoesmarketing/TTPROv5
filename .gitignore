@@ -1,7 +1,45 @@
-# Environment variables
+# Dependencies
+node_modules/
+/marketing/node_modules
+
+# Production builds
+.next/
+build/
+dist/
+dist-ssr/
+
+# Environment files
 .env
-.env.*
-*.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.coverage
+htmlcov/
+.pytest_cache/
+.hypothesis/
+
+# Service Account Files (SECURITY: Never commit these)
+service-account*.json
+firebase-service-account*.json
+*-service-account.json
+
+# API Keys and Secrets
+.env.secrets
+secrets.json
+credentials.json
+config/secrets.json
 
 # Logs
 logs
@@ -12,10 +50,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# E2E Test results
+e2e/test-results/
+e2e/playwright-report/
+e2e/.env
+auth-setup.json
 
 # Editor directories and files
 .vscode/*
@@ -28,13 +72,3 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
-
-# Environment variables
-.env
-.env.*
-*.env
-
-# Environment variables
-.env
-.env.*
-*.env

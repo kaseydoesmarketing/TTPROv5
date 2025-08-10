@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { validateAndSanitizeEnv } from './validators/envValidator';
 
 function clean(v?: string) {
   // Trim and remove all internal whitespace/newlines to avoid %0A iframe errors
@@ -13,44 +14,86 @@ function validateEnvVar(name: string, value?: string): string {
   return clean(value);
 }
 
-// Validate critical environment variables
+// Initialize Firebase only on client side
 let firebaseConfig: any;
-try {
+let app: any;
+let auth: any;
+let googleProvider: any;
+
+if (typeof window !== 'undefined') {
+  // Client-side initialization
+  let sanitizedEnv;
+  
+  try {
+    sanitizedEnv = validateAndSanitizeEnv();
+    console.log('✅ Environment validation passed');
+  } catch (error) {
+    console.error('❌ Environment validation failed:', error);
+    // Fallback to direct environment access
+    sanitizedEnv = {
+      NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    };
+    console.warn('⚠️ Using direct environment access as fallback');
+  }
+
+  // Always try to create a working Firebase config
   firebaseConfig = {
-    apiKey: validateEnvVar('NEXT_PUBLIC_FIREBASE_API_KEY', process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
-    authDomain: validateEnvVar('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
-    projectId: validateEnvVar('NEXT_PUBLIC_FIREBASE_PROJECT_ID', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
-    appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
-    messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+    apiKey: sanitizedEnv.NEXT_PUBLIC_FIREBASE_API_KEY || 'missing-api-key',
+    authDomain: sanitizedEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'missing.firebaseapp.com',
+    projectId: sanitizedEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'missing-project',
+    appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID) || 'missing-app-id',
+    messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID) || '000000000000',
   };
   
-  // Validate project ID matches expected value
-  const expectedProjectId = 'titletesterpro';
-  if (firebaseConfig.projectId !== expectedProjectId) {
-    console.error(`❌ Firebase project mismatch: got '${firebaseConfig.projectId}', expected '${expectedProjectId}'`);
-    throw new Error(`Firebase project ID mismatch: expected '${expectedProjectId}', got '${firebaseConfig.projectId}'`);
-  }
+  console.log('🔥 Firebase configuration created:');
+  console.log(`  Project ID: ${firebaseConfig.projectId}`);
+  console.log(`  Auth Domain: ${firebaseConfig.authDomain}`);
+  console.log(`  API Key: ${firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 10) + '...' : 'missing'}`);
   
-  console.log('✅ Firebase configuration validated successfully');
-} catch (error) {
-  console.error('❌ Firebase configuration validation failed:', error);
-  // Use fallback minimal config for development
+  // Validate we have the minimum required values
+  const hasRequiredFields = firebaseConfig.apiKey !== 'missing-api-key' && 
+                           firebaseConfig.projectId !== 'missing-project' && 
+                           firebaseConfig.authDomain !== 'missing.firebaseapp.com';
+  
+  if (!hasRequiredFields) {
+    console.error('❌ Critical Firebase configuration missing - authentication will not work');
+    console.error('Check that these environment variables are set:', {
+      NEXT_PUBLIC_FIREBASE_API_KEY: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    });
+  } else {
+    console.log('✅ Firebase configuration has required fields');
+  }
+
+  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+  
+  // Configure Google provider with YouTube read + write scopes for A/B testing
+  googleProvider.addScope('https://www.googleapis.com/auth/youtube.readonly');
+  googleProvider.addScope('https://www.googleapis.com/auth/youtube');
+  
+  // Set custom parameters for OAuth code flow (needed for refresh token)
+  googleProvider.setCustomParameters({
+    prompt: 'consent',
+    access_type: 'offline'
+  });
+} else {
+  // Server-side fallback
   firebaseConfig = {
-    apiKey: 'missing-api-key',
-    authDomain: 'missing.firebaseapp.com',
-    projectId: 'missing-project',
-    appId: 'missing-app-id',
+    apiKey: 'server-side-placeholder',
+    authDomain: 'server-side-placeholder.firebaseapp.com',
+    projectId: 'server-side-placeholder',
+    appId: 'server-side-placeholder',
     messagingSenderId: '000000000000',
   };
-  console.warn('⚠️ Using fallback Firebase configuration - authentication will fail');
 }
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-
-// Configure Google provider with YouTube scope
-googleProvider.addScope('https://www.googleapis.com/auth/youtube.readonly');
+export { auth, googleProvider };
 
 export const signInWithGoogle = async () => {
   try {

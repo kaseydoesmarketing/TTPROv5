@@ -75,38 +75,62 @@ def initialize_firebase():
         
     if not firebase_admin._apps:
         try:
-            # SECURE METHOD: Use GOOGLE_APPLICATION_CREDENTIALS (Render Secret File)
+            # PRODUCTION-ONLY: Use GOOGLE_APPLICATION_CREDENTIALS (Render Secret File)
             service_account_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            allow_env_fallback = os.environ.get("ALLOW_ENV_FALLBACK", "0") == "1"
+            
             if not service_account_path:
-                # Check if fallback is explicitly allowed
-                if os.environ.get("ALLOW_ENV_FALLBACK", "0") != "1":
-                    raise ValueError("❌ GOOGLE_APPLICATION_CREDENTIALS not set. Set ALLOW_ENV_FALLBACK=1 for emergency fallback.")
+                if not allow_env_fallback:
+                    error_msg = (
+                        "❌ GOOGLE_APPLICATION_CREDENTIALS not set. "
+                        "This is required for production. "
+                        "Check Render Secret File configuration."
+                    )
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
                 
-                logger.warning("⚠️ EMERGENCY FALLBACK: Using environment variables (less secure)")
-                # Fallback to environment variables only if explicitly allowed
+                logger.warning("⚠️ EMERGENCY FALLBACK: Using environment variables (INSECURE)")
                 cred_dict = settings.get_firebase_service_account_dict()
                 cred = credentials.Certificate(cred_dict)
                 firebase_admin.initialize_app(cred)
                 _firebase_initialized = True
-                logger.warning("⚠️ Firebase: Using FALLBACK environment variables (less secure)")
+                logger.warning("⚠️ Firebase: Using FALLBACK environment variables")
                 return
             
             logger.info(f"🔐 Firebase: Using SECURE service account file: {service_account_path}")
             
-            # Verify file exists and is readable
+            # Validate file exists and is readable
             if not os.path.exists(service_account_path):
-                raise FileNotFoundError(f"Firebase service account file not found: {service_account_path}")
+                raise FileNotFoundError(f"Service account file not found: {service_account_path}")
             
+            if not os.access(service_account_path, os.R_OK):
+                raise PermissionError(f"Service account file not readable: {service_account_path}")
+            
+            # Validate JSON structure
             try:
-                cred = credentials.Certificate(service_account_path)
-                firebase_admin.initialize_app(cred)
-                _firebase_initialized = True
-                logger.info("✅ Firebase Admin SDK initialized successfully using SECURE service account file")
-                return
-            except Exception as e:
-                logger.error(f"❌ Failed to initialize Firebase with service account file: {e}")
-                raise
+                with open(service_account_path, 'r') as f:
+                    service_data = json.load(f)
+                    
+                required_fields = ['type', 'project_id', 'private_key', 'client_email']
+                missing_fields = [field for field in required_fields if field not in service_data]
                 
+                if missing_fields:
+                    raise ValueError(f"Service account file missing required fields: {missing_fields}")
+                    
+                if service_data.get('project_id') != 'titletesterpro':
+                    raise ValueError(f"Invalid project_id in service account: {service_data.get('project_id')}")
+                    
+                logger.info(f"✅ Service account file validated: {service_data.get('client_email')}")
+                    
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in service account file: {e}")
+            
+            # Initialize Firebase Admin SDK
+            cred = credentials.Certificate(service_account_path)
+            firebase_admin.initialize_app(cred)
+            _firebase_initialized = True
+            logger.info("✅ Firebase Admin SDK initialized successfully using SECURE service account file")
+            
         except Exception as e:
             logger.error(f"Firebase initialization failed: {e}")
             raise RuntimeError(f"Failed to initialize Firebase Admin SDK: {str(e)}")
