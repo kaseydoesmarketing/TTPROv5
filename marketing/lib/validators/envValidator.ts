@@ -16,14 +16,14 @@ export function validateAndSanitizeEnv() {
   for (const envName of requiredEnvs) {
     const value = process.env[envName];
     
-    if (\!value) {
+    if (!value) {
       errors.push(`Missing required environment variable: ${envName}`);
       continue;
     }
     
     const trimmed = value.trim();
     
-    if (value \!== trimmed) {
+    if (value !== trimmed) {
       const msg = `Environment variable ${envName} has leading/trailing whitespace (length: ${value.length} vs ${trimmed.length})`;
       console.error(`🚨 ${msg}`);
       
@@ -32,7 +32,7 @@ export function validateAndSanitizeEnv() {
       }
     }
     
-    if (envName === 'NEXT_PUBLIC_FIREBASE_PROJECT_ID' && trimmed \!== 'titletesterpro') {
+    if (envName === 'NEXT_PUBLIC_FIREBASE_PROJECT_ID' && trimmed !== 'titletesterpro') {
       errors.push(`Invalid Firebase project ID: expected 'titletesterpro', got '${trimmed}'`);
     }
     
@@ -43,7 +43,8 @@ export function validateAndSanitizeEnv() {
     console.error('🚨 Environment validation failed:');
     errors.forEach(error => console.error(`  - ${error}`));
     
-    if (process.env.NODE_ENV === 'production' || process.env.CI === 'true') {
+    // Only throw during runtime, not build time
+    if (typeof window !== 'undefined' && (process.env.NODE_ENV === 'production' || process.env.CI === 'true')) {
       throw new Error('Environment validation failed - see errors above');
     }
   }

@@ -14,46 +14,64 @@ function validateEnvVar(name: string, value?: string): string {
   return clean(value);
 }
 
-// Validate and sanitize environment variables
-const sanitizedEnv = validateAndSanitizeEnv();
-
+// Initialize Firebase only on client side
 let firebaseConfig: any;
-try {
-  firebaseConfig = {
-    apiKey: sanitizedEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: sanitizedEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: sanitizedEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
-    messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
-  };
+let app: any;
+let auth: any;
+let googleProvider: any;
+
+if (typeof window !== 'undefined') {
+  // Client-side initialization
+  const sanitizedEnv = validateAndSanitizeEnv();
+
+  try {
+    firebaseConfig = {
+      apiKey: sanitizedEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: sanitizedEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: sanitizedEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
+      messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+    };
+    
+    console.log('✅ Firebase configuration loaded with sanitized environment');
+  } catch (error) {
+    console.error('❌ Firebase configuration validation failed:', error);
+    // Use fallback minimal config for development
+    firebaseConfig = {
+      apiKey: 'missing-api-key',
+      authDomain: 'missing.firebaseapp.com',
+      projectId: 'missing-project',
+      appId: 'missing-app-id',
+      messagingSenderId: '000000000000',
+    };
+    console.warn('⚠️ Using fallback Firebase configuration - authentication will fail');
+  }
+
+  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
   
-  console.log('✅ Firebase configuration loaded with sanitized environment');
-} catch (error) {
-  console.error('❌ Firebase configuration validation failed:', error);
-  // Use fallback minimal config for development
+  // Configure Google provider with YouTube read + write scopes for A/B testing
+  googleProvider.addScope('https://www.googleapis.com/auth/youtube.readonly');
+  googleProvider.addScope('https://www.googleapis.com/auth/youtube');
+  
+  // Set custom parameters for OAuth code flow (needed for refresh token)
+  googleProvider.setCustomParameters({
+    prompt: 'consent',
+    access_type: 'offline'
+  });
+} else {
+  // Server-side fallback
   firebaseConfig = {
-    apiKey: 'missing-api-key',
-    authDomain: 'missing.firebaseapp.com',
-    projectId: 'missing-project',
-    appId: 'missing-app-id',
+    apiKey: 'server-side-placeholder',
+    authDomain: 'server-side-placeholder.firebaseapp.com',
+    projectId: 'server-side-placeholder',
+    appId: 'server-side-placeholder',
     messagingSenderId: '000000000000',
   };
-  console.warn('⚠️ Using fallback Firebase configuration - authentication will fail');
 }
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-
-// Configure Google provider with YouTube read + write scopes for A/B testing
-googleProvider.addScope('https://www.googleapis.com/auth/youtube.readonly');
-googleProvider.addScope('https://www.googleapis.com/auth/youtube');
-
-// Set custom parameters for OAuth code flow (needed for refresh token)
-googleProvider.setCustomParameters({
-  prompt: 'consent',
-  access_type: 'offline'
-});
+export { auth, googleProvider };
 
 export const signInWithGoogle = async () => {
   try {

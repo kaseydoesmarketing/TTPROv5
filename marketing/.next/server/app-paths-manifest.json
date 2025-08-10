@@ -1,9 +1,10 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
+  "/oauth2/callback/page": "app/oauth2/callback/page.js",
   "/pricing/page": "app/pricing/page.js",
+  "/page": "app/page.js",
   "/app/billing/page": "app/app/billing/page.js",
   "/app/channels/page": "app/app/channels/page.js",
-  "/app/tests/page": "app/app/tests/page.js",
-  "/app/page": "app/app/page.js"
+  "/app/page": "app/app/page.js",
+  "/app/tests/page": "app/app/tests/page.js"
 }
