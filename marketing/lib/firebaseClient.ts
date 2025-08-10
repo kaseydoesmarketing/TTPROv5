@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { validateAndSanitizeEnv } from './validators/envValidator';
 
 function clean(v?: string) {
   // Trim and remove all internal whitespace/newlines to avoid %0A iframe errors
@@ -13,25 +14,20 @@ function validateEnvVar(name: string, value?: string): string {
   return clean(value);
 }
 
-// Validate critical environment variables
+// Validate and sanitize environment variables
+const sanitizedEnv = validateAndSanitizeEnv();
+
 let firebaseConfig: any;
 try {
   firebaseConfig = {
-    apiKey: validateEnvVar('NEXT_PUBLIC_FIREBASE_API_KEY', process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
-    authDomain: validateEnvVar('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
-    projectId: validateEnvVar('NEXT_PUBLIC_FIREBASE_PROJECT_ID', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+    apiKey: sanitizedEnv.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: sanitizedEnv.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: sanitizedEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     appId: clean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
     messagingSenderId: clean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
   };
   
-  // Validate project ID matches expected value
-  const expectedProjectId = 'titletesterpro';
-  if (firebaseConfig.projectId !== expectedProjectId) {
-    console.error(`❌ Firebase project mismatch: got '${firebaseConfig.projectId}', expected '${expectedProjectId}'`);
-    throw new Error(`Firebase project ID mismatch: expected '${expectedProjectId}', got '${firebaseConfig.projectId}'`);
-  }
-  
-  console.log('✅ Firebase configuration validated successfully');
+  console.log('✅ Firebase configuration loaded with sanitized environment');
 } catch (error) {
   console.error('❌ Firebase configuration validation failed:', error);
   // Use fallback minimal config for development
@@ -49,8 +45,15 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Configure Google provider with YouTube scope
+// Configure Google provider with YouTube read + write scopes for A/B testing
 googleProvider.addScope('https://www.googleapis.com/auth/youtube.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/youtube');
+
+// Set custom parameters for OAuth code flow (needed for refresh token)
+googleProvider.setCustomParameters({
+  prompt: 'consent',
+  access_type: 'offline'
+});
 
 export const signInWithGoogle = async () => {
   try {

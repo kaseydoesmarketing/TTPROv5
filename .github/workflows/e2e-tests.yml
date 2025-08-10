@@ -1,0 +1,228 @@
+name: 🎭 E2E Authentication Tests
+
+on:
+  schedule:
+    # Run E2E tests every 4 hours to catch regressions
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+      run_youtube_tests:
+        description: 'Run YouTube integration tests'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  e2e-authentication:
+    name: 🔐 Authentication Flow E2E
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    defaults:
+      run:
+        working-directory: ./e2e
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🏗️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: ./e2e/package-lock.json
+
+    - name: 📦 Install dependencies
+      run: |
+        npm ci
+        npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: 🔧 Configure test environment
+      run: |
+        cp .env.example .env
+        echo "E2E_BASE_URL=https://titletesterpro.com" >> .env
+        echo "E2E_API_BASE_URL=https://ttprov4-k58o.onrender.com" >> .env
+        echo "E2E_RUN_YOUTUBE_TESTS=${{ github.event.inputs.run_youtube_tests || 'false' }}" >> .env
+        echo "E2E_HEADLESS=true" >> .env
+        echo "CI=true" >> .env
+
+    - name: 🎭 Run authentication tests
+      run: |
+        npx playwright test auth-flow --project=${{ matrix.browser }} --reporter=github
+      timeout-minutes: 15
+
+    - name: 📺 Run YouTube integration tests (if enabled)
+      if: github.event.inputs.run_youtube_tests == 'true'
+      run: |
+        npx playwright test youtube-integration --project=${{ matrix.browser }} --reporter=github
+      timeout-minutes: 10
+
+    - name: 📤 Upload test results
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: e2e-results-${{ matrix.browser }}
+        path: |
+          ./e2e/test-results/
+          ./e2e/playwright-report/
+        retention-days: 7
+
+    - name: 📊 Test summary
+      if: always()
+      run: |
+        echo "## 🎭 E2E Test Results (${{ matrix.browser }})" >> $GITHUB_STEP_SUMMARY
+        echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Authentication Flow | ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.event.inputs.run_youtube_tests }}" == "true" ]]; then
+          echo "| YouTube Integration | ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 **Environment**: ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+        echo "🌐 **Browser**: ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+
+  security-check:
+    name: 🔒 Security & Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔍 Security scan
+      run: |
+        echo "🔍 Running security checks..."
+        
+        # Check for hardcoded secrets
+        if grep -r "AIzaSy" app/ --include="*.py" --exclude-dir=__pycache__; then
+          echo "❌ Found hardcoded Firebase API key in backend"
+          exit 1
+        fi
+        
+        if grep -r "sk_live_" app/ --include="*.py" --exclude-dir=__pycache__; then
+          echo "❌ Found hardcoded Stripe live key"
+          exit 1
+        fi
+        
+        echo "✅ No hardcoded secrets found in backend"
+        
+        # Check frontend for secrets
+        if grep -r "AIzaSy" marketing/app/ --include="*.tsx" --include="*.ts"; then
+          echo "❌ Found hardcoded Firebase API key in frontend"
+          exit 1
+        fi
+        
+        echo "✅ No hardcoded secrets found in frontend"
+
+    - name: 🔒 HTTPS enforcement check
+      run: |
+        echo "🔒 Checking HTTPS enforcement..."
+        
+        # Check if HTTP redirects to HTTPS
+        if curl -s -I "http://titletesterpro.com" | grep -q "301\|302"; then
+          echo "✅ HTTP properly redirects to HTTPS"
+        else
+          echo "⚠️ HTTP redirect behavior unclear"
+        fi
+        
+        # Check security headers
+        HEADERS=$(curl -s -I "https://titletesterpro.com")
+        if echo "$HEADERS" | grep -q "Strict-Transport-Security"; then
+          echo "✅ HSTS header present"
+        else
+          echo "⚠️ HSTS header missing"
+        fi
+
+  performance-check:
+    name: ⚡ Performance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: ⚡ Basic performance test
+      run: |
+        echo "⚡ Running basic performance checks..."
+        
+        # Test frontend loading time
+        START_TIME=$(date +%s%N)
+        curl -s -o /dev/null "https://titletesterpro.com"
+        END_TIME=$(date +%s%N)
+        FRONTEND_TIME=$(((END_TIME - START_TIME) / 1000000))
+        
+        echo "🎨 Frontend load time: ${FRONTEND_TIME}ms"
+        
+        # Test API response time
+        START_TIME=$(date +%s%N)
+        curl -s -o /dev/null "https://ttprov4-k58o.onrender.com/health"
+        END_TIME=$(date +%s%N)
+        API_TIME=$(((END_TIME - START_TIME) / 1000000))
+        
+        echo "🔧 API response time: ${API_TIME}ms"
+        
+        # Performance thresholds
+        if [[ $FRONTEND_TIME -gt 5000 ]]; then
+          echo "⚠️ Frontend loading slowly (>5s)"
+        else
+          echo "✅ Frontend performance acceptable"
+        fi
+        
+        if [[ $API_TIME -gt 2000 ]]; then
+          echo "⚠️ API responding slowly (>2s)"
+        else
+          echo "✅ API performance acceptable"
+        fi
+
+  report:
+    name: 📊 Final Report
+    runs-on: ubuntu-latest
+    needs: [e2e-authentication, security-check, performance-check]
+    if: always()
+
+    steps:
+    - name: 📊 Generate comprehensive report
+      run: |
+        echo "# 🚀 TitleTesterPro v5 - Automated Quality Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📅 Report Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## 🎯 Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Test Category | Status | Details |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔐 Authentication E2E | ${{ needs.e2e-authentication.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Cross-browser authentication flow |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔒 Security Check | ${{ needs.security-check.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Secret scanning & HTTPS enforcement |" >> $GITHUB_STEP_SUMMARY
+        echo "| ⚡ Performance Check | ${{ needs.performance-check.result == 'success' && '✅ PASSED' || '❌ FAILED' }} | Load time & API responsiveness |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## 🌐 Production Endpoints" >> $GITHUB_STEP_SUMMARY
+        echo "- 🎨 **Frontend**: https://titletesterpro.com" >> $GITHUB_STEP_SUMMARY
+        echo "- 🔧 **Backend API**: https://ttprov4-k58o.onrender.com" >> $GITHUB_STEP_SUMMARY
+        echo "- 📺 **Marketing**: https://marketing-j2jylh0kq-ttpro-live.vercel.app" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Overall status
+        if [[ "${{ needs.e2e-authentication.result }}" == "success" && "${{ needs.security-check.result }}" == "success" && "${{ needs.performance-check.result }}" == "success" ]]; then
+          echo "## 🎉 Overall Status: ✅ ALL GREEN" >> $GITHUB_STEP_SUMMARY
+          echo "The TitleTesterPro v5 authentication system is fully functional!" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ⚠️ Overall Status: ❌ ISSUES DETECTED" >> $GITHUB_STEP_SUMMARY
+          echo "Some tests failed. Please review the details above." >> $GITHUB_STEP_SUMMARY
+        fi

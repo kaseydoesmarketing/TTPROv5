@@ -86,22 +86,23 @@ async def health_check_simple():
         "service": "titletesterpro-api"
     }
 
-# Deterministic CORS configuration
+# Production-grade CORS configuration for session cookies
 ALLOWED_ORIGINS = [
     "https://www.titletesterpro.com",
-    "https://titletesterpro.com",
+    "https://titletesterpro.com", 
     "https://app.titletesterpro.com",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://localhost:3000"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=r"^https://.*ttpro[-]?(ov4|ov5|v5)?.*vercel\.app$",
-    allow_credentials=True,
-    allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-    allow_headers=["Authorization","Content-Type","X-Requested-With","Accept"],
-    expose_headers=["Content-Type","Content-Length"]
+    allow_credentials=True,  # CRITICAL: Required for session cookies
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept"],
+    expose_headers=["Content-Type", "Content-Length", "Set-Cookie"]
 )
 
 app.include_router(ab_test_router)
@@ -248,19 +249,22 @@ async def firebase_auth(request: Request):
         from fastapi.responses import JSONResponse
         response = JSONResponse(content=response_data)
         
-        # Set secure HTTP-only session cookie
-        # Use None for domain to work with both titletesterpro.com and vercel deployments
+        # Set production-grade session cookie with proper attributes
+        is_production = not settings.is_development
+        cookie_domain = ".titletesterpro.com" if is_production else None
+        cookie_samesite = "none" if is_production else "lax"
+        
         response.set_cookie(
             key="session_token",
             value=session_token,
-            max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+            max_age=7 * 24 * 60 * 60,  # 7 days (604800 seconds)
             httponly=True,
             secure=True,  # HTTPS only
-            samesite="lax"
-            # domain=".titletesterpro.com"  # Removed to make it work with all domains
+            samesite=cookie_samesite,
+            domain=cookie_domain
         )
         
-        logger.info(f"[AUTH] Set session cookie for user {user.id}")
+        logger.info(f"[AUTH] Session cookie set for user {user.id} - domain: {cookie_domain}, samesite: {cookie_samesite}")
         
         return response
         
@@ -299,6 +303,78 @@ async def logout(current_user: User = Depends(get_current_user_session), db: Ses
     except Exception as e:
         logger.error(f"Logout error: {e}")
         raise HTTPException(status_code=500, detail="Logout failed")
+
+@app.post("/api/auth/google/exchange")
+async def google_oauth_exchange(request: Request, current_user: User = Depends(get_current_user_session), db: Session = Depends(get_db)):
+    """Exchange Google OAuth authorization code for refresh token (YouTube API access)"""
+    try:
+        body = await request.json()
+        auth_code = body.get("code")
+        
+        if not auth_code:
+            raise HTTPException(status_code=400, detail="Authorization code required")
+        
+        # Google OAuth token exchange
+        import requests
+        
+        token_url = "https://oauth2.googleapis.com/token"
+        client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "117841417554034434636")
+        client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+        
+        if not client_secret:
+            logger.error("Missing GOOGLE_OAUTH_CLIENT_SECRET")
+            raise HTTPException(status_code=500, detail="OAuth not configured")
+        
+        token_data = {
+            "code": auth_code,
+            "client_id": client_id + ".apps.googleusercontent.com",
+            "client_secret": client_secret,
+            "redirect_uri": "https://titletesterpro.com/oauth2/callback",
+            "grant_type": "authorization_code"
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        
+        if token_response.status_code != 200:
+            logger.error(f"OAuth token exchange failed: {token_response.text}")
+            raise HTTPException(status_code=400, detail="Token exchange failed")
+        
+        tokens = token_response.json()
+        
+        # Store encrypted tokens
+        current_user.set_google_tokens(
+            access_token=tokens.get("access_token"),
+            refresh_token=tokens.get("refresh_token"),
+            expires_in=tokens.get("expires_in", 3600)
+        )
+        db.commit()
+        
+        logger.info(f"[OAUTH] Google tokens stored for user {current_user.id}")
+        
+        return {"ok": True, "has_refresh_token": bool(tokens.get("refresh_token"))}
+        
+    except Exception as e:
+        logger.error(f"OAuth exchange error: {e}")
+        raise HTTPException(status_code=500, detail="OAuth exchange failed")
+
+@app.get("/api/auth/google/status")  
+async def google_oauth_status(current_user: User = Depends(get_current_user_session)):
+    """Check Google OAuth token status for YouTube API access"""
+    try:
+        has_access_token = bool(current_user.google_access_token)
+        has_refresh_token = bool(current_user.google_refresh_token)
+        is_expired = current_user.needs_token_refresh() if has_access_token else True
+        
+        return {
+            "has_access_token": has_access_token,
+            "has_refresh_token": has_refresh_token,
+            "is_expired": is_expired,
+            "youtube_write_ready": has_access_token and has_refresh_token and not is_expired
+        }
+        
+    except Exception as e:
+        logger.error(f"OAuth status error: {e}")
+        return {"youtube_write_ready": False, "error": str(e)}
 
 @app.get("/api/auth/session")
 async def get_session_status(current_user: User = Depends(get_current_user_session)):
