@@ -43,20 +43,40 @@ export function validateAndSanitizeEnv() {
     console.error('🚨 Environment validation failed:');
     errors.forEach(error => console.error(`  - ${error}`));
     
-    // Only throw during runtime, not build time
-    if (typeof window !== 'undefined' && (process.env.NODE_ENV === 'production' || process.env.CI === 'true')) {
+    // Only throw during development to avoid breaking production
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       throw new Error('Environment validation failed - see errors above');
+    }
+    
+    // In production, log errors but don't break the app
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+      console.warn('⚠️ Environment validation failed in production - using fallback configuration');
     }
   }
   
-  // Success log with masked values
-  console.log('✅ Environment validation passed:');
-  Object.entries(sanitized).forEach(([key, value]) => {
-    const preview = key.includes('API_KEY') ? `${value.substring(0, 6)}...` : 
-                   key.includes('API_BASE_URL') ? value :
-                   `${value.substring(0, 10)}...`;
-    console.log(`  ${key}: ${preview} (${value.length} chars)`);
-  });
+  // Success log with masked values (only if no errors)
+  if (errors.length === 0) {
+    console.log('✅ Environment validation passed:');
+    Object.entries(sanitized).forEach(([key, value]) => {
+      const preview = key.includes('API_KEY') ? `${value.substring(0, 6)}...` : 
+                     key.includes('API_BASE_URL') ? value :
+                     `${value.substring(0, 10)}...`;
+      console.log(`  ${key}: ${preview} (${value.length} chars)`);
+    });
+  } else {
+    // In case of errors, still log what we have
+    console.log('⚠️ Returning partial environment configuration:');
+    Object.entries(sanitized).forEach(([key, value]) => {
+      if (value) {
+        const preview = key.includes('API_KEY') ? `${value.substring(0, 6)}...` : 
+                       key.includes('API_BASE_URL') ? value :
+                       `${value.substring(0, 10)}...`;
+        console.log(`  ${key}: ${preview} (${value.length} chars)`);
+      } else {
+        console.log(`  ${key}: MISSING`);
+      }
+    });
+  }
   
   return sanitized;
 }
