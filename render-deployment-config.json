@@ -1,0 +1,72 @@
+{
+  "name": "ttprov5-backend",
+  "type": "web_service",
+  "repo": "https://github.com/kaseydoesmarketing/TTPROv5.git",
+  "branch": "fix/ttprov5-autoship-20250810_130422",
+  "runtime": "python",
+  "buildCommand": "pip install -r requirements.txt",
+  "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+  "preDeployCommand": "alembic upgrade head",
+  "healthCheckPath": "/health",
+  "autoDeploy": true,
+  "envVars": [
+    {
+      "key": "ENVIRONMENT",
+      "value": "production"
+    },
+    {
+      "key": "LOG_LEVEL", 
+      "value": "info"
+    },
+    {
+      "key": "APP_NAME",
+      "value": "titletesterpro"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "postgresql://postgres_ttprov5_user:VE1ODbnInDCjcThgm4UVqWBNKU6GYK1n@dpg-d2cb900gjohc73fv7h60-a.virginia-postgres.render.com/postgres_ttprov5"
+    },
+    {
+      "key": "REDIS_URL",
+      "value": "redis://red-d2cbelf5iees73fgg71g:6379"
+    },
+    {
+      "key": "GOOGLE_APPLICATION_CREDENTIALS",
+      "value": "/etc/secrets/firebase-key.json"
+    },
+    {
+      "key": "ALLOW_ENV_FALLBACK",
+      "value": "0"
+    },
+    {
+      "key": "FIREBASE_DEBUG",
+      "value": "1"
+    },
+    {
+      "key": "GOOGLE_CLIENT_ID",
+      "value": "618794070994-70oauf1olrgmqvg284mpj5u2lf75jl1q.apps.googleusercontent.com"
+    },
+    {
+      "key": "GOOGLE_CLIENT_SECRET",
+      "value": "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"
+    },
+    {
+      "key": "GOOGLE_API_KEY",
+      "value": "AIzaSyA8hjvKfC_D1rQqIWgjhxq-xM1cmgDB3z4"
+    },
+    {
+      "key": "JWT_SECRET_KEY",
+      "value": "bB9uYvA4X7cP3fN2rL6mQ8tH1jR5wK0zS5dM7pV9qT2yU8gE1cL0bF4nJ6rQ2aW7"
+    },
+    {
+      "key": "CORS_ORIGINS",
+      "value": "https://www.titletesterpro.com,https://titletesterpro.com,https://*.vercel.app,http://localhost:5173"
+    }
+  ],
+  "secretFiles": [
+    {
+      "name": "firebase-key.json",
+      "content": "PLACEHOLDER_FOR_FIREBASE_SERVICE_ACCOUNT_JSON"
+    }
+  ]
+}
