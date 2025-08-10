@@ -8,7 +8,15 @@ VERCEL_TOKEN="${VERCEL_TOKEN:-pTlRlJaadobG5ZwoHUzjFoUb}"
 VERCEL_SCOPE="${VERCEL_SCOPE:-ttpro-live}"
 
 # New Backend URL (update this after Render deployment)
-NEW_BACKEND_URL="${1:-https://ttprov5-api.onrender.com}"
+NEW_BACKEND_URL="${1:-}"
+
+if [ -z "$NEW_BACKEND_URL" ]; then
+    echo "❌ Error: Please provide the new backend URL as first argument"
+    echo "Usage: $0 https://your-new-backend.onrender.com"
+    echo ""
+    echo "Example: $0 https://ttprov5-backend-abc123.onrender.com"
+    exit 1
+fi
 
 echo "🚀 Updating Vercel Environment Variables for TTPROv5"
 echo "===================================================="
