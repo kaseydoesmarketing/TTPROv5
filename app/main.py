@@ -6,10 +6,10 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from .config import settings
-from .database import get_db
-from .database_manager import db_manager
-from .firebase_auth import verify_firebase_token, initialize_firebase
+from .settings import settings
+from .store import get_database
+from .store import database_store
+from .firebase_init import verify_firebase_token, initialize_firebase, firebase_debug_payload
 from .models import User
 from .ab_test_routes import router as ab_test_router
 from .channel_routes import router as channel_router
@@ -31,8 +31,8 @@ processed_auth_codes = set()
 
 app = FastAPI(
     title="TitleTesterPro API",
-    description="A SaaS platform for A/B testing YouTube titles - Render Deployment",
-    version="1.0.7"
+    description="A SaaS platform for A/B testing YouTube titles - TTPROv5 Production",
+    version="2.0.0"
 )
 
 # CRITICAL: Health check endpoint MUST be defined before ANY middleware
@@ -87,22 +87,7 @@ async def health_check_simple():
     }
 
 # Parse CORS origins from environment variable
-def parse_cors_origins():
-    cors_env = os.getenv("CORS_ORIGINS", "")
-    if cors_env:
-        origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
-    else:
-        # Default origins if not configured
-        origins = [
-            "https://www.titletesterpro.com",
-            "https://titletesterpro.com",
-            "https://app.titletesterpro.com",
-            "http://localhost:5173",
-            "http://localhost:3000"
-        ]
-    return origins
-
-ALLOWED_ORIGINS = parse_cors_origins()
+ALLOWED_ORIGINS = settings.cors_origins_list
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,41 +113,21 @@ import json
 @app.get("/debug/firebase")
 async def debug_firebase():
     """Debug Firebase configuration when FIREBASE_DEBUG=1"""
-    if not os.getenv("FIREBASE_DEBUG", "0") == "1":
+    if not settings.is_debug_mode:
         raise HTTPException(status_code=404, detail="Debug endpoint not enabled")
     
-    config_method = "UNKNOWN"
-    google_creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-    
-    if google_creds_path:
-        config_method = "SECRET_FILE"
-        file_exists = os.path.exists(google_creds_path) if google_creds_path else False
-    else:
-        config_method = "ENVIRONMENT_VARIABLES"
-        file_exists = False
-    
-    from . import firebase_auth
-    
-    return {
-        "configuration_method": config_method,
-        "google_application_credentials": google_creds_path,
-        "secret_file_exists": file_exists,
-        "firebase_initialized": firebase_auth._firebase_initialized,
-        "allow_env_fallback": os.getenv("ALLOW_ENV_FALLBACK", "0") == "1",
-        "firebase_debug_enabled": os.getenv("FIREBASE_DEBUG", "0") == "1",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return firebase_debug_payload()
 
 @app.get("/debug/cors-domains")
 async def debug_cors_domains():
     """Debug CORS configuration when FIREBASE_DEBUG=1"""
-    if not os.getenv("FIREBASE_DEBUG", "0") == "1":
+    if not settings.is_debug_mode:
         raise HTTPException(status_code=404, detail="Debug endpoint not enabled")
     return {
         "cors_configuration": {
             "allowed_origins": ALLOWED_ORIGINS,
-            "allow_origin_regex": r"^https://.*ttpro[-]?(ov4|ov5|v5)?.*vercel\.app$",
-            "environment_cors": os.getenv("CORS_ORIGINS", "Not set")
+            "allow_origin_regex": r"^https://.*ttpro[-]?(ov5|v5)?.*vercel\.app$",
+            "environment_cors": settings.CORS_ORIGINS
         },
         "expected_origins": [
             "https://titletesterpro.com",
@@ -179,7 +144,7 @@ async def debug_cors_domains():
             ],
             "firebase_console_url": "https://console.firebase.google.com/project/titletesterpro/authentication/settings"
         },
-        "test_cors_command": "curl -H 'Origin: https://titletesterpro.com' -H 'Access-Control-Request-Method: POST' -X OPTIONS https://ttprov4-k58o.onrender.com/api/auth/firebase"
+        "test_cors_command": "curl -H 'Origin: https://titletesterpro.com' -H 'Access-Control-Request-Method: POST' -X OPTIONS https://your-new-backend.onrender.com/api/auth/firebase"
     }
 
 # Additional API routes for dashboard
