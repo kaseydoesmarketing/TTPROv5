@@ -1,8 +1,17 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "TTPROv5": true,
+      "bootstrap/v5": false,
+      "main": false,
+      "master": false
+    }
+  },
   "rewrites": [
     { "source": "/app", "destination": "/app" },
-    { "source": "/app/(.*)", "destination": "/app/$1" },
-    { "source": "/api/(.*)", "destination": "https://ttprov5.onrender.com/api/$1" },
-    { "source": "/health", "destination": "https://ttprov5.onrender.com/health" }
-  ]
+    { "source": "/app/(.*)", "destination": "/app/$1" }
+  ],
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url"
+  }
 }
