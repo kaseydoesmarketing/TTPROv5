@@ -1,0 +1,59 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, bootstrap/v5, "fix/ttprov5-*" ]
+  pull_request:
+    branches: [ main, bootstrap/v5 ]
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend URL to test'
+        required: false
+        default: 'https://ttprov5-api.onrender.com'
+      frontend_url:
+        description: 'Frontend URL to test'
+        required: false
+        default: 'https://titletesterpro.com'
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+    
+    - name: Install Playwright
+      run: |
+        npm install -D @playwright/test
+        npx playwright install chromium
+    
+    - name: Run E2E tests
+      env:
+        BACKEND_URL: ${{ github.event.inputs.backend_url || 'https://ttprov5-api.onrender.com' }}
+        FRONTEND_URL: ${{ github.event.inputs.frontend_url || 'https://titletesterpro.com' }}
+      run: |
+        npx playwright test e2e/auth-and-dashboard.spec.ts
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 7
+    
+    - name: Upload test videos
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: playwright-videos
+        path: test-results/
+        retention-days: 7
