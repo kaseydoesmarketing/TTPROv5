@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ttprov5.onrender.com';
 
 export class ApiClient {
   private async getAuthToken(): Promise<string | null> {

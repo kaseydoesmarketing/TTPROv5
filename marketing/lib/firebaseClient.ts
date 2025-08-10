@@ -122,7 +122,7 @@ export const signInAndVerify = async () => {
     }
     
     // Step 4: Send to backend
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov5.onrender.com';
     const apiUrl = `${apiBaseUrl}/api/auth/firebase`;
     console.log(`📤 Sending to backend: ${apiUrl}`);
     
@@ -216,7 +216,7 @@ export const debugFirebaseConfig = () => {
   const projectMatch = firebaseConfig.projectId === expectedProjectId;
   console.log(`  Project Match: ${projectMatch ? "✅ MATCH" : "❌ MISMATCH"} (expected: ${expectedProjectId})`);
   
-  console.log(`  API Base URL: ${process.env.NEXT_PUBLIC_API_BASE_URL || 'Using default: https://ttprov4-k58o.onrender.com'}`);
+  console.log(`  API Base URL: ${process.env.NEXT_PUBLIC_API_BASE_URL || 'Using default: https://ttprov5.onrender.com'}`);
   
   return {
     config: firebaseConfig,
@@ -239,7 +239,7 @@ export const debugFirebaseConfig = () => {
  */
 export const checkSession = async () => {
   try {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov5.onrender.com';
     const response = await fetch(`${apiBaseUrl}/api/auth/session`, {
       method: "GET",
       credentials: "include"
@@ -264,7 +264,7 @@ export const checkSession = async () => {
  */
 export const logoutSession = async () => {
   try {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov5.onrender.com';
     const response = await fetch(`${apiBaseUrl}/api/auth/logout`, {
       method: "POST",
       credentials: "include"
