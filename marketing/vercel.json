@@ -1,12 +1,4 @@
 {
-  "git": {
-    "deploymentEnabled": {
-      "TTPROv5": false,
-      "bootstrap/v5": true,
-      "main": false,
-      "master": false
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
