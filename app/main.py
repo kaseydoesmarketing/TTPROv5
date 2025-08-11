@@ -259,18 +259,26 @@ async def firebase_auth(request: Request):
         response = JSONResponse(content=response_data)
         
         # Set production-grade session cookie with proper attributes
-        is_production = not settings.is_development
-        cookie_domain = ".titletesterpro.com" if is_production else None
+        import os  # ensure imported at top if not already
+        
+        is_production = os.getenv("ENV", "").lower() in {"prod", "production"}
+        host = request.url.hostname or ""
+        is_ttp = host.endswith("titletesterpro.com")
+        
+        # Domain: only set on titletesterpro.com; keep host-only on Render
+        cookie_domain = ".titletesterpro.com" if is_ttp else None
+        
+        # SameSite: must be None in production so cross-site (Vercel → Render) works
         cookie_samesite = "none" if is_production else "lax"
         
         response.set_cookie(
             key="session_token",
             value=session_token,
-            max_age=7 * 24 * 60 * 60,  # 7 days (604800 seconds)
+            max_age=7 * 24 * 60 * 60,  # 7 days
             httponly=True,
-            secure=True,  # HTTPS only
+            secure=is_production,
             samesite=cookie_samesite,
-            domain=cookie_domain
+            domain=cookie_domain,
         )
         
         logger.info(f"[AUTH] Session cookie set for user {user.id} - domain: {cookie_domain}, samesite: {cookie_samesite}")
@@ -296,15 +304,14 @@ async def logout(current_user: User = Depends(get_current_user_session), db: Ses
         from fastapi.responses import JSONResponse
         response = JSONResponse(content={"ok": True, "message": "Logged out successfully"})
         
-        # Clear the session cookie
-        response.set_cookie(
+        # Clear both cookie scopes to ensure logout works everywhere
+        response.delete_cookie(key="session_token")  # host-only cookie (onrender)
+        response.delete_cookie(
             key="session_token",
-            value="",
-            max_age=0,  # Expire immediately
             httponly=True,
             secure=True,
-            samesite="lax"
-            # domain=".titletesterpro.com"  # Removed to match login cookie
+            samesite="none",
+            domain=".titletesterpro.com"
         )
         
         return response
