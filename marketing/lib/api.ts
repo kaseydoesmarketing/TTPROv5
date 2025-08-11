@@ -1,10 +1,12 @@
+import { authenticatedFetch } from './authHandshake';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov5.onrender.com';
 
 export async function apiFetch(path: string, opts: RequestInit = {}) {
   const url = `${API_BASE}${path}`;
   
-  const response = await fetch(url, {
-    credentials: 'include',
+  // Use authenticatedFetch for automatic token refresh on 401
+  const response = await authenticatedFetch(url, {
     headers: {
       'Content-Type': 'application/json',
       ...opts.headers,

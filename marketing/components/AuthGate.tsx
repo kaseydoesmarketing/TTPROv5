@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, signInWithGoogle } from '@/lib/firebaseClient';
-import { postIdToken } from '@/lib/api';
+import { performAuthHandshake } from '@/lib/authHandshake';
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -38,9 +38,15 @@ export default function AuthGate({ children }: AuthGateProps) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
-          const idToken = await user.getIdToken();
-          await postIdToken(idToken);
-          setUser(user);
+          // Use the new auth handshake utility for robust authentication
+          const handshakeResult = await performAuthHandshake();
+          if (handshakeResult.success) {
+            setUser(user);
+            console.log('✅ Auth handshake successful, session verified:', handshakeResult.sessionVerified);
+          } else {
+            console.error('❌ Auth handshake failed:', handshakeResult.error);
+            setError(handshakeResult.error || 'Authentication failed');
+          }
         } else {
           setUser(null);
         }

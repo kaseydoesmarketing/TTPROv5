@@ -30,7 +30,7 @@ function OAuth2CallbackContent() {
         }
         
         // Exchange code for tokens
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov4-k58o.onrender.com';
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ttprov5.onrender.com';
         
         const response = await fetch(`${apiBaseUrl}/api/auth/google/exchange`, {
           method: 'POST',
