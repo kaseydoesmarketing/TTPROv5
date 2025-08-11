@@ -92,7 +92,7 @@ def initialize_firebase():
                 logger.warning("⚠️ EMERGENCY FALLBACK: Using environment variables (INSECURE)")
                 cred_dict = settings.get_firebase_service_account_dict()
                 cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
+                firebase_admin.initialize_app(cred, {"projectId": os.getenv("FIREBASE_PROJECT_ID")})
                 _firebase_initialized = True
                 logger.warning("⚠️ Firebase: Using FALLBACK environment variables")
                 return
@@ -127,7 +127,7 @@ def initialize_firebase():
             
             # Initialize Firebase Admin SDK
             cred = credentials.Certificate(service_account_path)
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred, {"projectId": os.getenv("FIREBASE_PROJECT_ID")})
             _firebase_initialized = True
             logger.info("✅ Firebase Admin SDK initialized successfully using SECURE service account file")
             

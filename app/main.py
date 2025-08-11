@@ -212,10 +212,45 @@ async def firebase_auth(request: Request):
         from .firebase_auth import _peek_jwt_claims
         _peek_jwt_claims(id_token)
         
-        # Verify Firebase token
-        decoded_token = verify_firebase_token(id_token)
+        # Add diagnostics helper
+        from firebase_admin import auth as fb_auth
+        import base64, json
+        
+        def _safe_jwt_payload(id_token: str) -> dict:
+            try:
+                parts = id_token.split(".")
+                if len(parts) != 3:
+                    return {}
+                # pad-safe base64 decoding
+                pad = "=" * (-len(parts[1]) % 4)
+                return json.loads(base64.urlsafe_b64decode(parts[1] + pad))
+            except Exception:
+                return {}
+        
+        # Verify Firebase token with diagnostics
+        expected_project = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+        try:
+            decoded_token = fb_auth.verify_id_token(id_token, clock_skew_seconds=60)
+        except Exception as e:
+            payload = _safe_jwt_payload(id_token)
+            logger.error(
+                "VERIFY_FAIL class=%s msg=%s expected_project=%s token_aud=%s token_iss=%s token_sub=%s",
+                e.__class__.__name__, str(e), expected_project,
+                payload.get("aud"), payload.get("iss"), payload.get("sub"),
+            )
+            # keep returning 401 as before
+            raise HTTPException(status_code=401, detail="Authentication failed")
+        
         if not decoded_token:
             raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # After successful verify, also log project bindings once
+        try:
+            from firebase_admin import get_app
+            appinfo = get_app().project_id if hasattr(get_app(), "project_id") else None
+            logger.info("VERIFY_OK user=%s app_project=%s expected_project=%s", decoded_token.get("uid"), appinfo, expected_project)
+        except Exception:
+            pass
         
         # Get database session
         db = next(get_db())
