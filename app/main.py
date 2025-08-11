@@ -259,21 +259,26 @@ async def firebase_auth(request: Request):
         response = JSONResponse(content=response_data)
         
         # Set production-grade session cookie with proper attributes
+        import os  # ensure imported at top if not already
+        
         is_production = os.getenv("ENV", "").lower() in {"prod", "production"}
         host = request.url.hostname or ""
         is_ttp = host.endswith("titletesterpro.com")
         
-        cookie_domain = ".titletesterpro.com" if (is_production and is_ttp) else None
-        cookie_samesite = "none" if (is_production and is_ttp) else "lax"
+        # Domain: only set on titletesterpro.com; keep host-only on Render
+        cookie_domain = ".titletesterpro.com" if is_ttp else None
+        
+        # SameSite: must be None in production so cross-site (Vercel → Render) works
+        cookie_samesite = "none" if is_production else "lax"
         
         response.set_cookie(
             key="session_token",
             value=session_token,
-            max_age=7 * 24 * 60 * 60,  # 7 days (604800 seconds)
+            max_age=7 * 24 * 60 * 60,  # 7 days
             httponly=True,
             secure=is_production,
             samesite=cookie_samesite,
-            domain=cookie_domain
+            domain=cookie_domain,
         )
         
         logger.info(f"[AUTH] Session cookie set for user {user.id} - domain: {cookie_domain}, samesite: {cookie_samesite}")
