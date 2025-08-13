@@ -66,8 +66,55 @@ def _peek_jwt_claims(jwt_str: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def load_service_account() -> tuple[dict, str]:
+    """
+    Load service account credentials from multiple sources in priority order.
+    Returns: (credentials_dict, source_type)
+    """
+    # Priority 1: Render Secret File at /etc/secrets/firebase-credentials.json
+    secret_file_path = "/etc/secrets/firebase-credentials.json"
+    if os.path.exists(secret_file_path) and os.path.isfile(secret_file_path):
+        try:
+            with open(secret_file_path, 'r') as f:
+                creds = json.load(f)
+            if creds.get("project_id") != "titletesterpro":
+                raise ValueError(f"Invalid project_id: {creds.get('project_id')}, expected 'titletesterpro'")
+            logger.info("✅ Firebase: Using SECRET_FILE source")
+            return creds, "SECRET_FILE"
+        except Exception as e:
+            logger.warning(f"Failed to load from {secret_file_path}: {e}")
+    
+    # Priority 2: GOOGLE_APPLICATION_CREDENTIALS path if set & readable
+    gac_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if gac_path and os.path.exists(gac_path) and os.path.isfile(gac_path):
+        try:
+            with open(gac_path, 'r') as f:
+                creds = json.load(f)
+            if creds.get("project_id") != "titletesterpro":
+                raise ValueError(f"Invalid project_id: {creds.get('project_id')}, expected 'titletesterpro'")
+            logger.info("✅ Firebase: Using GAC_PATH source")
+            return creds, "GAC_PATH"
+        except Exception as e:
+            logger.warning(f"Failed to load from GOOGLE_APPLICATION_CREDENTIALS: {e}")
+    
+    # Priority 3: FIREBASE_SERVICE_ACCOUNT_JSON environment variable (raw JSON)
+    env_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if env_json:
+        try:
+            creds = json.loads(env_json)
+            if creds.get("project_id") != "titletesterpro":
+                raise ValueError(f"Invalid project_id: {creds.get('project_id')}, expected 'titletesterpro'")
+            logger.info("✅ Firebase: Using ENV_JSON source")
+            return creds, "ENV_JSON"
+        except Exception as e:
+            logger.error(f"Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+            raise
+    
+    raise ValueError("No valid Firebase credentials found in any source (SECRET_FILE, GAC_PATH, ENV_JSON)")
+
+
 def initialize_firebase():
-    """Initialize Firebase Admin SDK - SECURE SERVICE ACCOUNT FILE ONLY"""
+    """Initialize Firebase Admin SDK with multi-source support"""
     global _firebase_initialized
     
     if _firebase_initialized:
@@ -75,37 +122,11 @@ def initialize_firebase():
         
     if not firebase_admin._apps:
         try:
-            # SECURE METHOD: Use GOOGLE_APPLICATION_CREDENTIALS (Render Secret File)
-            service_account_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-            if not service_account_path:
-                # Check if fallback is explicitly allowed
-                if os.environ.get("ALLOW_ENV_FALLBACK", "0") != "1":
-                    raise ValueError("❌ GOOGLE_APPLICATION_CREDENTIALS not set. Set ALLOW_ENV_FALLBACK=1 for emergency fallback.")
-                
-                logger.warning("⚠️ EMERGENCY FALLBACK: Using environment variables (less secure)")
-                # Fallback to environment variables only if explicitly allowed
-                cred_dict = settings.get_firebase_service_account_dict()
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-                _firebase_initialized = True
-                logger.warning("⚠️ Firebase: Using FALLBACK environment variables (less secure)")
-                return
-            
-            logger.info(f"🔐 Firebase: Using SECURE service account file: {service_account_path}")
-            
-            # Verify file exists and is readable
-            if not os.path.exists(service_account_path):
-                raise FileNotFoundError(f"Firebase service account file not found: {service_account_path}")
-            
-            try:
-                cred = credentials.Certificate(service_account_path)
-                firebase_admin.initialize_app(cred)
-                _firebase_initialized = True
-                logger.info("✅ Firebase Admin SDK initialized successfully using SECURE service account file")
-                return
-            except Exception as e:
-                logger.error(f"❌ Failed to initialize Firebase with service account file: {e}")
-                raise
+            creds_dict, source = load_service_account()
+            cred = credentials.Certificate(creds_dict)
+            firebase_admin.initialize_app(cred)
+            _firebase_initialized = True
+            logger.info(f"✅ Firebase Admin SDK initialized from {source}")
                 
         except Exception as e:
             logger.error(f"Firebase initialization failed: {e}")

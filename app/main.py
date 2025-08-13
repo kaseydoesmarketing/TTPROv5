@@ -80,10 +80,13 @@ def healthz():
 @app.get("/health")
 async def health_check_simple():
     """Simple health check that responds immediately without database dependencies"""
+    from . import firebase_auth
+    
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "titletesterpro-api"
+        "service": "titletesterpro-api",
+        "firebase_admin_initialized": firebase_auth._firebase_initialized
     }
 
 # Deterministic CORS configuration
