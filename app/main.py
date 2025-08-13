@@ -10,6 +10,8 @@ from .config import settings
 from .database import get_db
 from .database_manager import db_manager
 from .firebase_auth import verify_firebase_token, initialize_firebase
+from . import firebase_auth as firebase_auth_module
+
 from .models import User
 from .ab_test_routes import router as ab_test_router
 from .channel_routes import router as channel_router
