@@ -1,4 +1,4 @@
-// File: /Users/kvimedia/TTPROv5/marketing/app/pricing/page.tsx
+// File: /Users/kvimedia/V6/TTPROv5-1/marketing/app/pricing/page.tsx
 import * as entry from '../../../../app/pricing/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
