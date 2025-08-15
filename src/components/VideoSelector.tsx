@@ -29,11 +29,27 @@ export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }
     fetchChannelVideos();
   }, []);
 
+  const verifyYouTube = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/oauth/google/verify`, { credentials: 'include' });
+      const j = await res.json().catch(() => ({ ok: false }));
+      return !!j?.ok;
+    } catch {
+      return false;
+    }
+  };
+
   const fetchChannelVideos = async () => {
     setLoading(true);
     setError('');
     
     try {
+      const verified = await verifyYouTube();
+      if (!verified) {
+        setError('YouTube access not verified. Please click "Connect YouTube" to grant access.');
+        setLoading(false);
+        return;
+      }
       const data = await apiClient.getChannelVideos(50);
       setVideos(data.videos || []);
     } catch (err) {

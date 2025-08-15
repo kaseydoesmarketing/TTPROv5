@@ -8,6 +8,7 @@ from .config import settings
 from .database import get_db
 from .models import User
 from .auth_dependencies import get_current_user_session
+import requests
 
 router = APIRouter(prefix="/api/oauth/google", tags=["oauth-google"])
 
@@ -68,6 +69,31 @@ async def google_status(current: User = Depends(get_current_user_session)):
 		"scope": current.google_scope if connected else None,
 		"expiresAt": current.token_expires_at.isoformat() if current.token_expires_at else None,
 	}
+
+
+@router.get("/verify")
+async def google_verify(current: User = Depends(get_current_user_session)):
+	"""Call YouTube API with stored access token to confirm validity."""
+	if not current.google_access_token or current.is_token_expired():
+		return {"ok": False}
+	access = current.get_google_access_token()
+	if not access:
+		return {"ok": False}
+	try:
+		resp = requests.get(
+			"https://www.googleapis.com/youtube/v3/channels",
+			params={"part": "id", "mine": "true"},
+			headers={"Authorization": f"Bearer {access}"},
+			timeout=10,
+		)
+		if resp.status_code == 200:
+			data = resp.json()
+			items = data.get("items") or []
+			chan_id = (items[0]["id"]) if items else None
+			return {"ok": True, "channelId": chan_id}
+		return {"ok": False}
+	except Exception:
+		return {"ok": False}
 
 
 @router.post("/revoke")
