@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VideoSelector } from './VideoSelector';
+import VideoSelector from './VideoSelector';
 import { DateTimePicker } from './DateTimePicker';
 import { apiClient } from '../lib/api-client';
 
