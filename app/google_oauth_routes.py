@@ -1,0 +1,1 @@
+from .oauth_routes import router  # re-export for compatibility 

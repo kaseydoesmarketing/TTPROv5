@@ -112,6 +112,10 @@ app.include_router(admin_router)
 from .oauth_routes import router as oauth_router
 app.include_router(oauth_router)
 
+# Explicit google oauth alias route wiring (compat)
+from .google_oauth_routes import router as google_oauth_router
+app.include_router(google_oauth_router)
+
 # Debug and inspection utilities
 import base64
 import json
