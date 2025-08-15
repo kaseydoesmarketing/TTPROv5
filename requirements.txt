@@ -1,17 +1,31 @@
-fastapi[standard]==0.116.1
-uvicorn==0.32.1
+# Web framework / server
+fastapi==0.111.1
+uvicorn[standard]==0.30.5
+
+# HTTP client
 requests==2.32.3
+
+# Auth / crypto
+PyJWT>=2.8.0
+cryptography==43.0.3
+passlib[bcrypt]==1.7.4
+
+# Config
+pydantic-settings==2.10.1
+python-dotenv==1.0.1
+
+# DB & migrations
 sqlalchemy==2.0.41
 alembic==1.16.4
 psycopg2-binary==2.9.10
-redis==6.2.0
+# asyncpg==0.30.0   # <— remove or comment out unless you truly use async engine
+
+# Background / payments (only if used)
 celery==5.5.3
-pydantic-settings==2.10.1
-python-multipart==0.0.20
 stripe==11.4.1
-PyJWT>=2.8.0
-cryptography==43.0.3
-python-dotenv==1.0.1
-google-api-python-client==2.176.0
+
+# Google / YouTube
 google-auth==2.40.3
 google-auth-oauthlib==1.2.2
+google-auth-httplib2==0.2.0
+google-api-python-client==2.176.0
