@@ -23,7 +23,10 @@ export default function AuthGate() {
         })
         
         if (response.ok) {
-          console.log('Session initialized successfully')
+          // ensure we land on /app
+          if (window.location.pathname !== '/app') {
+            window.history.replaceState({}, document.title, '/app')
+          }
         } else {
           console.error('Failed to initialize session:', response.status)
         }

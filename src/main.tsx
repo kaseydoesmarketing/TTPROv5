@@ -28,12 +28,20 @@ if (!domain || !clientId || !apiBase) {
     </div>
   `
 } else {
+  const onRedirectCallback = (appState?: any) => {
+    const target = appState?.returnTo || '/app'
+    if (window.location.pathname !== target) {
+      window.history.replaceState({}, document.title, target)
+    }
+  }
+
   createRoot(root).render(
     <StrictMode>
       <Auth0Provider
         domain={domain}
         clientId={clientId}
         authorizationParams={{ redirect_uri: window.location.origin }}
+        onRedirectCallback={onRedirectCallback}
       >
         <App />
       </Auth0Provider>
