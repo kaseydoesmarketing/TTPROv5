@@ -1,4 +1,5 @@
 import { useAuth0 } from '@auth0/auth0-react'
+import { API_BASE_URL } from '@/lib/env'
 import { useEffect } from 'react'
 
 export default function AuthGate() {
@@ -13,7 +14,7 @@ export default function AuthGate() {
         const idToken = (claims as any)?.__raw
         if (!idToken) return
         
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${idToken}`,
@@ -23,7 +24,6 @@ export default function AuthGate() {
         })
         
         if (response.ok) {
-          // ensure we land on /app
           if (window.location.pathname !== '/app') {
             window.history.replaceState({}, document.title, '/app')
           }

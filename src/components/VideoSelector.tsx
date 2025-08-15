@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { apiClient } from '../lib/api-client';
+import React, { useEffect, useState } from 'react';
+import { apiClient } from '@/lib/api-client';
+import { API_BASE_URL } from '@/lib/env';
 
 interface Video {
   id: string;
@@ -17,7 +18,7 @@ interface VideoSelectorProps {
   className?: string;
 }
 
-export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }: VideoSelectorProps) {
+export default function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }: VideoSelectorProps) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +32,7 @@ export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }
 
   const verifyYouTube = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/oauth/google/verify`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/api/oauth/google/verify`, { credentials: 'include' });
       const j = await res.json().catch(() => ({ ok: false }));
       return !!j?.ok;
     } catch {
@@ -51,7 +52,7 @@ export function VideoSelector({ selectedVideoId, onVideoSelect, className = '' }
         return;
       }
       const data = await apiClient.getChannelVideos(50);
-      setVideos(data.videos || []);
+      setVideos((data as any).videos || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
     } finally {

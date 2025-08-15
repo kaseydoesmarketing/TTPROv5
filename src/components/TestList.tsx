@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/lib/env';
 
 interface ABTest {
   id: number;
@@ -22,11 +23,9 @@ export function TestList({ refreshTrigger }: TestListProps) {
   const [tests, setTests] = useState<ABTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const fetchJSON = async (path: string, init?: RequestInit) => {
-    if (!API_BASE) throw new Error('[env] VITE_API_BASE_URL missing');
-    const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', ...(init || {}) });
+    const res = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include', ...(init || {}) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   };
