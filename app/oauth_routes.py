@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from .config import settings
 from .database import get_db
 from .models import User
+from .auth_dependencies import get_current_user_session
 
 router = APIRouter(prefix="/api/oauth/google", tags=["oauth-google"])
 
@@ -51,10 +52,12 @@ async def store_tokens(request: Request, db: Session = Depends(get_db)) -> Dict[
 
 
 @router.get("/status")
-async def status(current=Depends(get_db), request: Request = None, db: Session = Depends(get_db)):
-	# Using session cookie dependency for real endpoints would be ideal; provide lightweight status too
-	# For simplicity, check by session (if available); otherwise, this endpoint could be protected later.
-	raise HTTPException(status_code=501, detail="Use app endpoints that require session for status")
+async def google_status(current: User = Depends(get_current_user_session)):
+	connected = bool(current.google_refresh_token)
+	return {
+		"connected": connected,
+		"expiresAt": current.token_expires_at.isoformat() if current.token_expires_at else None,
+	}
 
 
 @router.post("/revoke")

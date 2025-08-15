@@ -11,6 +11,8 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Play, TrendingUp, CheckCircle, Clock, Plus, BarChart3, Settings } from 'lucide-react';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { ConnectYouTubeButton } from './youtube/ConnectYouTubeButton';
+import { YouTubeStatus } from './youtube/YouTubeStatus';
 
 export function Dashboard() {
   const { user, logout } = useAuthContext();
@@ -176,6 +178,17 @@ export function Dashboard() {
                 </CardHeader>
                 <CardContent className="p-6">
                   <TestList refreshTrigger={refreshTrigger} />
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-lg border-none">
+                <CardHeader>
+                  <CardTitle>Integrations</CardTitle>
+                  <CardDescription>Connect your Google/YouTube account</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 flex items-center justify-between">
+                  <YouTubeStatus />
+                  <ConnectYouTubeButton />
                 </CardContent>
               </Card>
 
