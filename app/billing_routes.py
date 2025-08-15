@@ -10,7 +10,7 @@ import os
 from .config import settings
 from .database import get_db
 from .models import User
-from .auth_dependencies import get_current_firebase_user
+from .auth_dependencies import get_current_user_session
 from .services.stripe_webhooks import StripeWebhookManager
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ async def get_pricing_plans():
 
 @router.get("/billing/subscription")
 async def get_subscription_info(
-    current_user: User = Depends(get_current_firebase_user),
+    current_user: User = Depends(get_current_user_session),
     db: Session = Depends(get_db)
 ):
     """Get current user's subscription information"""
@@ -93,7 +93,7 @@ async def get_subscription_info(
 @router.post("/billing/create-checkout-session")
 async def create_checkout_session(
     request: CreateCheckoutSessionRequest,
-    current_user: User = Depends(get_current_firebase_user),
+    current_user: User = Depends(get_current_user_session),
     db: Session = Depends(get_db)
 ):
     """Create Stripe checkout session for subscription"""
@@ -116,10 +116,7 @@ async def create_checkout_session(
             success_url=request.success_url,
             cancel_url=request.cancel_url,
             customer_email=current_user.email,
-            metadata={
-                'user_id': current_user.id,
-                'firebase_uid': current_user.firebase_uid
-            }
+            metadata={'user_id': current_user.id}
         )
         
         return {"checkout_url": checkout_session.url}
@@ -148,7 +145,7 @@ async def stripe_webhook(request: Request):
 
 @router.get("/billing/usage")
 async def get_usage_info(
-    current_user: User = Depends(get_current_firebase_user),
+    current_user: User = Depends(get_current_user_session),
     db: Session = Depends(get_db)
 ):
     """Get current user's usage information"""

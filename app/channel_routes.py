@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from .database import get_db
 from .models import User
 from .models import YouTubeChannel
-from .auth_dependencies import get_current_firebase_user, get_current_paid_user
+from .auth_dependencies import get_current_user_session, get_current_paid_user
 from .youtube_api import get_youtube_client, YouTubeAPIClient
 from .tasks import update_quota_usage
 from .oauth_refresh import refresh_google_access_token
@@ -17,14 +17,14 @@ router = APIRouter(prefix="/api/channels", tags=["channels"])
 
 
 @router.get("/test")
-async def test_auth(current_user: User = Depends(get_current_firebase_user)):
-    """Test endpoint to verify authentication is working"""
-    return {
-        "message": "Authentication successful",
-        "user_id": current_user.id,
-        "email": current_user.email,
-        "has_google_tokens": current_user.google_access_token is not None
-    }
+async def test_auth(current_user: User = Depends(get_current_user_session)):
+	"""Test endpoint to verify authentication is working"""
+	return {
+		"message": "Authentication successful",
+		"user_id": current_user.id,
+		"email": current_user.email,
+		"has_google_tokens": current_user.google_access_token is not None
+	}
 
 
 @router.get("/", response_model=List[Dict[str, Any]])

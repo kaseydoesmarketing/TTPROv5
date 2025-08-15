@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from .database import get_db
 from .models import User, ABTest, TitleRotation, QuotaUsage
 from .youtube_api import get_youtube_client, YouTubeAPIClient
-from .auth_dependencies import get_current_firebase_user, get_current_paid_user
+from .auth_dependencies import get_current_paid_user
 from .tasks import update_quota_usage
 from .services.token_refresh import refresh_google_token
 import logging
