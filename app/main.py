@@ -108,6 +108,10 @@ app.include_router(channel_router)
 app.include_router(billing_router, prefix="/api")
 app.include_router(admin_router)
 
+# OAuth routes
+from .oauth_routes import router as oauth_router
+app.include_router(oauth_router)
+
 # Debug and inspection utilities
 import base64
 import json

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Plus, Youtube, Trash2 } from 'lucide-react';
+import { ConnectYouTubeButton } from '@/components/youtube/ConnectYouTubeButton';
 
 export function ChannelsPage() {
   const [channels, setChannels] = useState<any[]>([]);
@@ -51,10 +52,7 @@ export function ChannelsPage() {
             Connect and manage your YouTube channels
           </p>
         </div>
-        <Button onClick={handleConnectChannel} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Connect Channel
-        </Button>
+        <ConnectYouTubeButton />
       </div>
 
       {channels.length === 0 ? (
