@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 	
 	# Application secret
 	secret_key: str = os.getenv("SECRET_KEY", "change-me-in-prod")
+	# Encryption key for Google tokens at rest (32-byte urlsafe base64 for Fernet)
+	google_token_enc_key: Optional[str] = os.getenv("GOOGLE_TOKEN_ENC_KEY")
 	# Webhook HMAC secret for Auth0 Actions -> our backend (support both names)
 	auth0_action_hmac_secret: Optional[str] = os.getenv("AUTH0_ACTION_HMAC_SECRET") or os.getenv("AUTH0_ACTIONS_WEBHOOK_SECRET")
 	

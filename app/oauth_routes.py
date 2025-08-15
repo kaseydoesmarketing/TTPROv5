@@ -30,7 +30,7 @@ async def store_tokens(request: Request, db: Session = Depends(get_db)) -> Dict[
 	"""
 	Auth0 Action posts Google tokens here after a successful Google login/link.
 	Headers: X-Auth0-Actions-Signature: sha256=<hex(hmac_sha256(body, secret))>
-	Body JSON: { sub, email?, access_token, refresh_token?, scope?, expires_in? }
+	Body JSON: { sub, email?, access_token, refresh_token?, scope?, expires_in?, issued_at? }
 	"""
 	body = await request.body()
 	sig = (
@@ -54,7 +54,7 @@ async def store_tokens(request: Request, db: Session = Depends(get_db)) -> Dict[
 		# minimal create if needed (email may be absent)
 		user = User(firebase_uid=sub, email=email or f"user-{sub}@example.com", display_name=email or "User")
 		db.add(user)
-	user.set_google_tokens(access_token, refresh_token, expires_in)
+	user.set_google_tokens(access_token, refresh_token, expires_in, scope)
 	user.updated_at = datetime.utcnow()
 	db.commit()
 	return {"ok": True, "scope": scope, "expires_at": user.token_expires_at.isoformat() if user.token_expires_at else None}
@@ -65,6 +65,7 @@ async def google_status(current: User = Depends(get_current_user_session)):
 	connected = bool(current.google_refresh_token)
 	return {
 		"connected": connected,
+		"scope": current.google_scope if connected else None,
 		"expiresAt": current.token_expires_at.isoformat() if current.token_expires_at else None,
 	}
 

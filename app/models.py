@@ -29,6 +29,7 @@ class User(Base):
     google_access_token = Column(Text)  # Encrypted
     google_refresh_token = Column(Text)  # Encrypted
     token_expires_at = Column(DateTime)
+    google_scope = Column(Text)
     
     youtube_channel_id = Column(String)
     youtube_channel_title = Column(String)
@@ -57,7 +58,9 @@ class User(Base):
     
     @staticmethod
     def _get_encryption_key() -> bytes:
-        """Generate encryption key from secret key"""
+        """Get Fernet key: prefer GOOGLE_TOKEN_ENC_KEY else derive from SECRET_KEY."""
+        if settings.google_token_enc_key:
+            return settings.google_token_enc_key.encode()
         key_material = settings.secret_key.encode()
         digest = hashlib.sha256(key_material).digest()
         return base64.urlsafe_b64encode(digest)
@@ -94,7 +97,7 @@ class User(Base):
             logger.error(f"Token decryption failed: {e}")
             return None
     
-    def set_google_tokens(self, access_token: Optional[str], refresh_token: Optional[str] = None, expires_in: int = 3600):
+    def set_google_tokens(self, access_token: Optional[str], refresh_token: Optional[str] = None, expires_in: int = 3600, scope: Optional[str] = None):
         """Set encrypted Google OAuth tokens with expiration"""
         try:
             if access_token:
@@ -104,6 +107,8 @@ class User(Base):
                 self.google_refresh_token = self._encrypt_token(refresh_token)
             
             self.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            if scope:
+                self.google_scope = scope
             self.updated_at = datetime.utcnow()
             
             logger.info(f"Updated OAuth tokens for user {self.id}")
@@ -160,6 +165,7 @@ class User(Base):
         self.google_access_token = None
         self.google_refresh_token = None
         self.token_expires_at = None
+        self.google_scope = None
         self.updated_at = datetime.utcnow()
         
         logger.info(f"Cleared OAuth tokens for user {self.id}")
