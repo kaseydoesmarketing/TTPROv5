@@ -15,6 +15,10 @@ class Settings(BaseSettings):
 	# YouTube API (optional)
 	youtube_api_key: Optional[str] = os.getenv("YOUTUBE_API_KEY")
 	
+	# Auth0 (for ID token verification)
+	auth0_domain: Optional[str] = os.getenv("AUTH0_DOMAIN")
+	auth0_client_id: Optional[str] = os.getenv("AUTH0_CLIENT_ID")
+	
 	# Application secret (prefer SESSION_SECRET if present)
 	secret_key: str = os.getenv("SESSION_SECRET") or os.getenv("SECRET_KEY", "change-me-in-prod")
 	# Encryption key for Google tokens at rest (32-byte urlsafe base64 for Fernet)

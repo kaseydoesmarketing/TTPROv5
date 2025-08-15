@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuthContext } from '../contexts/Auth0Context';
 
 interface ABTest {
   id: number;
@@ -20,27 +19,21 @@ interface TestListProps {
 }
 
 export function TestList({ refreshTrigger }: TestListProps) {
-  const { getAuthToken } = useAuth();
   const [tests, setTests] = useState<ABTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  const fetchJSON = async (path: string, init?: RequestInit) => {
+    if (!API_BASE) throw new Error('[env] VITE_API_BASE_URL missing');
+    const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', ...(init || {}) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  };
 
   const fetchTests = async () => {
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch tests');
-      }
-
-      const data = await response.json();
+      const data = await fetchJSON('/api/ab-tests/');
       setTests(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tests');
@@ -51,20 +44,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
   const startTest = async (testId: number) => {
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/start`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start test');
-      }
-
+      await fetchJSON(`/api/ab-tests/${testId}/start`, { method: 'POST' });
       fetchTests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start test');
@@ -73,20 +53,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
   const pauseTest = async (testId: number) => {
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/pause`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to pause test');
-      }
-
+      await fetchJSON(`/api/ab-tests/${testId}/pause`, { method: 'POST' });
       fetchTests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause test');
@@ -95,20 +62,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
   const resumeTest = async (testId: number) => {
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/resume`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to resume test');
-      }
-
+      await fetchJSON(`/api/ab-tests/${testId}/resume`, { method: 'POST' });
       fetchTests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resume test');
@@ -117,20 +71,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
   const stopTest = async (testId: number) => {
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}/stop`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to stop test');
-      }
-
+      await fetchJSON(`/api/ab-tests/${testId}/stop`, { method: 'POST' });
       fetchTests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to stop test');
@@ -138,25 +79,9 @@ export function TestList({ refreshTrigger }: TestListProps) {
   };
 
   const deleteTest = async (testId: number) => {
-    if (!confirm('Are you sure you want to delete this test?')) {
-      return;
-    }
-
+    if (!confirm('Are you sure you want to delete this test?')) return;
     try {
-      const token = await getAuthToken();
-      const apiUrl = (import.meta as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:8000';
-
-      const response = await fetch(`${apiUrl}/api/ab-tests/${testId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete test');
-      }
-
+      await fetchJSON(`/api/ab-tests/${testId}`, { method: 'DELETE' });
       fetchTests();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete test');
@@ -265,52 +190,22 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
           <div className="flex gap-2">
             {test.status === 'draft' && (
-              <button
-                onClick={() => startTest(test.id)}
-                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-              >
-                Start Test
-              </button>
+              <button onClick={() => startTest(test.id)} className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Start Test</button>
             )}
             {test.status === 'active' && (
               <>
-                <button
-                  onClick={() => pauseTest(test.id)}
-                  className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-                >
-                  Pause
-                </button>
-                <button
-                  onClick={() => stopTest(test.id)}
-                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                >
-                  Stop
-                </button>
+                <button onClick={() => pauseTest(test.id)} className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700">Pause</button>
+                <button onClick={() => stopTest(test.id)} className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">Stop</button>
               </>
             )}
             {test.status === 'paused' && (
               <>
-                <button
-                  onClick={() => resumeTest(test.id)}
-                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                >
-                  Resume
-                </button>
-                <button
-                  onClick={() => stopTest(test.id)}
-                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                >
-                  Stop
-                </button>
+                <button onClick={() => resumeTest(test.id)} className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Resume</button>
+                <button onClick={() => stopTest(test.id)} className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">Stop</button>
               </>
             )}
             {(test.status === 'stopped' || test.status === 'completed') && (
-              <button
-                onClick={() => deleteTest(test.id)}
-                className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
-              >
-                Delete
-              </button>
+              <button onClick={() => deleteTest(test.id)} className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Delete</button>
             )}
           </div>
         </div>

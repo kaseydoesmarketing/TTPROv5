@@ -15,13 +15,8 @@ function AppContent() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/healthz`, {
-          credentials: 'include',
-        });
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/healthz`, { credentials: 'include' });
         setApiHealthy(response.ok);
-        if (response.ok) {
-          console.log('API OK');
-        }
       } catch (error) {
         console.error('API health check failed:', error);
         setApiHealthy(false);
