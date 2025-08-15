@@ -17,8 +17,8 @@ class Settings(BaseSettings):
 	
 	# Application secret
 	secret_key: str = os.getenv("SECRET_KEY", "change-me-in-prod")
-	# Webhook HMAC secret for Auth0 Actions -> our backend
-	auth0_action_hmac_secret: Optional[str] = os.getenv("AUTH0_ACTION_HMAC_SECRET")
+	# Webhook HMAC secret for Auth0 Actions -> our backend (support both names)
+	auth0_action_hmac_secret: Optional[str] = os.getenv("AUTH0_ACTION_HMAC_SECRET") or os.getenv("AUTH0_ACTIONS_WEBHOOK_SECRET")
 	
 	# Stripe Configuration (Optional)
 	stripe_secret_key: Optional[str] = os.getenv("STRIPE_SECRET_KEY")

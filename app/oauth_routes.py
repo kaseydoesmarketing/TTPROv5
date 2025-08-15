@@ -12,23 +12,32 @@ from .auth_dependencies import get_current_user_session
 router = APIRouter(prefix="/api/oauth/google", tags=["oauth-google"])
 
 
-def verify_hmac(request_body: bytes, provided_sig: str) -> bool:
+def verify_hmac(request_body: bytes, header_value: str) -> bool:
 	secret = (settings.auth0_action_hmac_secret or "").encode()
 	if not secret:
 		return False
-	computed = hmac.new(secret, request_body, hashlib.sha256).hexdigest()
-	return hmac.compare_digest(computed, (provided_sig or "").lower())
+	computed_hex = hmac.new(secret, request_body, hashlib.sha256).hexdigest()
+	if not header_value:
+		return False
+	val = header_value.strip().lower()
+	if val.startswith("sha256="):
+		val = val.split("=", 1)[1]
+	return hmac.compare_digest(computed_hex, val)
 
 
 @router.post("/store")
 async def store_tokens(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
 	"""
 	Auth0 Action posts Google tokens here after a successful Google login/link.
-	Headers: X-Signature: hex(hmac_sha256(body, AUTH0_ACTION_HMAC_SECRET))
-	Body JSON: { sub, email, access_token, refresh_token, scope, expires_in }
+	Headers: X-Auth0-Actions-Signature: sha256=<hex(hmac_sha256(body, secret))>
+	Body JSON: { sub, email?, access_token, refresh_token?, scope?, expires_in? }
 	"""
 	body = await request.body()
-	sig = request.headers.get("x-signature") or request.headers.get("X-Signature")
+	sig = (
+		request.headers.get("x-auth0-actions-signature")
+		or request.headers.get("X-Auth0-Actions-Signature")
+		or request.headers.get("x-signature")
+	)
 	if not verify_hmac(body, sig):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
 	data = json.loads(body.decode())
