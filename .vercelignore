@@ -1,0 +1,10 @@
+marketing-nextjs-archived/
+.next/
+next.config.*
+pages/
+# ignore backend artifacts
+app/
+backend/
+*.py
+__pycache__/
+requirements.txt 
