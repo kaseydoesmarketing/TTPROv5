@@ -99,7 +99,8 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
 	CORSMiddleware,
 	allow_origins=ALLOWED_ORIGINS,
-	allow_origin_regex=r"^https://.*ttpro(v5|[-]?ov5)?.*vercel\.app$",
+	# Be permissive for previews and to rule out CORS misconfig
+	allow_origin_regex=r"^https://.*$",
 	allow_credentials=True,
 	allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
 	allow_headers=["Authorization","Content-Type","X-Requested-With"],
@@ -139,7 +140,7 @@ def _clear_session_cookie(resp: JSONResponse, req: Request):
 def auth_login(request: Request, db: Session = Depends(get_db)):
 	auth = request.headers.get("authorization") or request.headers.get("Authorization")
 	if not auth or not auth.lower().startswith("bearer "):
-		raise HTTPException(status_code=404 if request.url.scheme == "http" else 401, detail="Missing bearer token")
+		raise HTTPException(status_code=401, detail="Missing bearer token")
 	token = auth.split(" ", 1)[1].strip()
 	try:
 		claims = verify_auth0_id_token(token)
@@ -200,3 +201,11 @@ app.include_router(google_oauth_router)
 # Debug and inspection utilities
 import base64
 import json
+
+@app.get("/api/meta/cors")
+async def meta_cors(request: Request):
+	return {
+		"ok": True,
+		"origin_header": request.headers.get("origin"),
+		"allowed_list": ALLOWED_ORIGINS,
+	}
