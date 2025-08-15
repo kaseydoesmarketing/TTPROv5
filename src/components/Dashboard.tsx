@@ -3,7 +3,7 @@ import { useAuthContext } from '../contexts/Auth0Context';
 import { CreateTestModal } from './CreateTestModal';
 import { TestList } from './TestList';
 import { ChannelSelector } from './ChannelSelector';
-import { apiClient } from '../lib/api-auth0';
+import { apiClient } from '../lib/api-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';

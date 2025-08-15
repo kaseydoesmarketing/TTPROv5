@@ -7,4 +7,14 @@ app/
 backend/
 *.py
 __pycache__/
-requirements.txt 
+requirements.txt
+*.pyc
+pyproject.toml
+poetry.lock
+Dockerfile*
+docker-compose*
+render.yaml
+fly.toml
+Procfile
+alembic/
+*.next.* 

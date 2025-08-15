@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { apiClient } from '@/lib/api-auth0';
+import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Plus, Youtube, Trash2 } from 'lucide-react';
 
@@ -27,8 +27,11 @@ export function ChannelsPage() {
   };
 
   const handleConnectChannel = () => {
-    // In a real app, this would initiate OAuth flow
-    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/auth/oauth/initiate`;
+    const base = import.meta.env.VITE_API_BASE_URL;
+    if (!base) {
+      throw new Error('[env] VITE_API_BASE_URL is missing. Set it to your v5 API, e.g. https://ttprov5.onrender.com');
+    }
+    window.location.href = `${base}/auth/oauth/initiate`;
   };
 
   if (loading) {
