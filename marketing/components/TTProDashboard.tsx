@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react';
-import { User } from 'firebase/auth';
-import { auth, logout } from '@/lib/firebaseClient';
 import { Button } from '@/components/ui/button';
 import Kpis from '@/components/Kpis';
 import LiveCampaigns from '@/components/LiveCampaigns';
@@ -13,11 +11,10 @@ import NewCampaignWizard from '@/components/NewCampaignWizard';
 
 export default function TTProDashboard() {
   const [showNewCampaignModal, setShowNewCampaignModal] = useState(false);
-  const user = auth.currentUser;
 
   const handleSignOut = async () => {
     try {
-      await logout();
+      // no-op in marketing shell
     } catch (error) {
       console.error('Failed to sign out:', error);
     }
@@ -46,20 +43,7 @@ export default function TTProDashboard() {
             {/* Right Side */}
             <div className="flex items-center space-x-4">
               <ApiStatus />
-              
-              {user && (
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={user.photoURL || '/default-avatar.png'}
-                    alt={user.displayName || 'User'}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <span className="text-sm font-medium text-slate-700 hidden sm:block">
-                    {user.displayName}
-                  </span>
-                </div>
-              )}
-              
+
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>
@@ -81,7 +65,7 @@ export default function TTProDashboard() {
             <h2 className="text-2xl font-bold text-slate-900">Campaigns</h2>
             <p className="text-slate-600">Manage your A/B testing campaigns</p>
           </div>
-          
+
           <Button 
             onClick={() => setShowNewCampaignModal(true)}
             className="flex items-center space-x-2"
@@ -115,7 +99,7 @@ export default function TTProDashboard() {
               <BillingPortalButton />
               <span className="text-xs text-slate-500">v5.0</span>
             </div>
-            
+
             <div className="text-xs text-slate-500">
               &copy; 2024 TitleTesterPro. All rights reserved.
             </div>
