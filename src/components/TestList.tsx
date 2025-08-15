@@ -33,7 +33,7 @@ export function TestList({ refreshTrigger }: TestListProps) {
 
   const fetchTests = async () => {
     try {
-      const data = await fetchJSON('/api/ab-tests/');
+      const data = await fetchJSON('/api/ab-tests');
       setTests(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tests');
