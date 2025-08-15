@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiClient } from '../lib/api';
+import { apiClient } from '../lib/api-auth0';
 
 interface Video {
   id: string;

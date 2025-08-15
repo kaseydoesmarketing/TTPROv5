@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthContext } from '../contexts/Auth0Context';
 import { CreateTestModal } from './CreateTestModal';
 import { TestList } from './TestList';
 import { ChannelSelector } from './ChannelSelector';
-import { apiClient } from '../lib/api';
+import { apiClient } from '../lib/api-auth0';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -13,7 +13,7 @@ import { Play, TrendingUp, CheckCircle, Clock, Plus, BarChart3, Settings } from 
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 
 export function Dashboard() {
-  const { currentUser, logout } = useAuth();
+  const { user, logout } = useAuthContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState({
@@ -37,7 +37,7 @@ export function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      if (!currentUser) {
+      if (!user) {
         console.error('No authenticated user available for API request');
         return;
       }
@@ -78,10 +78,10 @@ export function Dashboard() {
               <ChannelSelector />
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={currentUser?.photoURL || ''} alt="Profile" />
-                  <AvatarFallback>{currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                  <AvatarImage src={user?.picture || ''} alt="Profile" />
+                  <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-gray-700">{currentUser?.displayName}</span>
+                <span className="text-sm font-medium text-gray-700">{user?.name}</span>
               </div>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Sign Out

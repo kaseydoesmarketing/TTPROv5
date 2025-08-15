@@ -1,7 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/app", "destination": "/app" },
-    { "source": "/app/(.*)", "destination": "/app/$1" },
-    { "source": "/api/(.*)", "destination": "https://ttprov4-k58o.onrender.com/api/$1" }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }

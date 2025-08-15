@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-auth0';
 import { toast } from 'sonner';
 import { Plus, Youtube, Trash2 } from 'lucide-react';
 

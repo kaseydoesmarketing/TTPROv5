@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthContext } from '../contexts/Auth0Context';
 
 interface Channel {
   id: string;

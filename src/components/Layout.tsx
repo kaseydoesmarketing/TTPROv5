@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { useAuth } from './auth/AuthProvider';
+import { useAuthContext } from '../contexts/Auth0Context';
 import { Button } from './ui/button';
 import { 
   LayoutDashboard, 
@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export function Layout() {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuthContext();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -26,7 +26,7 @@ export function Layout() {
   ];
 
   const handleSignOut = async () => {
-    await signOut();
+    await logout();
   };
 
   return (

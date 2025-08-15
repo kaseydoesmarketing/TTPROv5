@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-auth0';
 import { toast } from 'sonner';
 import { BarChart3, TestTube, Youtube, TrendingUp } from 'lucide-react';
 
