@@ -12,8 +12,8 @@ export function ConnectYouTubeButton() {
         access_type: 'offline',
         scope: 'openid profile email offline_access',
         // request IdP-level scopes for Google (no API audience here)
-        connection_scope: 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl',
-        redirect_uri: window.location.origin,
+        connection_scope: 'https://www.googleapis.com/auth/youtube.readonly',
+        redirect_uri: `${window.location.origin}/auth/callback`,
       },
     });
   };
