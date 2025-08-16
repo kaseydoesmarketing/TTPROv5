@@ -14,7 +14,8 @@ export default function AuthGate() {
         const idToken = (claims as any)?.__raw
         if (!idToken) return
         
-        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        const url = `${API_BASE_URL}/api/auth/login`.replace(/^\/\//, '/')
+        const response = await fetch(url, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${idToken}`,

@@ -9,12 +9,27 @@ if (!RAW_BASE) {
 
 const API_BASE_URL = (() => {
   let b = RAW_BASE.trim();
+  if (typeof window !== 'undefined') {
+    const h = window.location.hostname;
+    if (/titletesterpro\.com$/.test(h) && /onrender\.com/.test(b)) {
+      // Prefer same-origin. Return empty base so paths like '/api/...'
+      // remain relative to the current origin.
+      return '';
+    }
+  }
   if (b.startsWith('http://') && /onrender\.com/.test(b)) b = b.replace(/^http:\/\//, 'https://');
   return b.replace(/\/$/, '');
 })();
 
+function join(base: string, path: string): string {
+  if (!base) return path; // same-origin
+  // Avoid double '/api' when base ends with '/api' and path starts with '/api'
+  if (/\/api$/.test(base) && path.startsWith('/api')) return base + path.replace(/^\/api/, '');
+  return base + path;
+}
+
 async function fetchJson(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(join(API_BASE_URL, path), {
     credentials: 'include',
     ...options,
     headers: {
