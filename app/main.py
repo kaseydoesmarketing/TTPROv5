@@ -120,9 +120,14 @@ auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 SESSION_COOKIE_NAME = "session_token"
 
 def _cookie_domain_for_request(req: Request) -> Optional[str]:
+	"""Derive cookie domain; prefer primary site domain when proxied."""
+	# Prefer forwarded/origin host when present (Vercel proxy)
+	origin = (req.headers.get("origin") or "").lower()
+	xf_host = (req.headers.get("x-forwarded-host") or "").lower()
 	host = (req.headers.get("host") or "").lower()
-	if host.endswith("titletesterpro.com"):
-		return ".titletesterpro.com"
+	for candidate in (origin, xf_host, host):
+		if candidate.endswith("titletesterpro.com"):
+			return ".titletesterpro.com"
 	return None
 
 def _set_session_cookie(resp: JSONResponse, req: Request, raw: str, days: int = 7):
