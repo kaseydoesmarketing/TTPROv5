@@ -25,7 +25,11 @@ from jwt import PyJWKClient
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from .auth.auth0_verify import verify_auth0_id_token
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+# Prefer Starlette's ProxyHeadersMiddleware; fallback to Uvicorn's if unavailable
+try:
+	from starlette.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
+except Exception:  # pragma: no cover
+	from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
