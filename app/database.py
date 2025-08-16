@@ -8,33 +8,48 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
 from .database_manager import (
-    db_manager, 
-    get_db, 
-    initialize_database,
-    retry_on_database_error,
-    Base
+	db_manager, 
+	initialize_database,
+	retry_on_database_error,
+	Base
 )
+from typing import Generator
 
 # Initialize the robust database connection
 _database_initialized = False
 
-def ensure_database_initialized():
-    """Ensure database is initialized before use"""
-    global _database_initialized
-    if not _database_initialized:
-        initialize_database()
-        _database_initialized = True
+def ensure_database_initialized() -> None:
+	"""Ensure database is initialized before use"""
+	global _database_initialized
+	if not _database_initialized:
+		initialize_database()
+		_database_initialized = True
+
+# Public dependency that guarantees initialization
+
+def get_db() -> Generator:
+	"""FastAPI dependency that ensures DB initialization before yielding a session."""
+	ensure_database_initialized()
+	session = db_manager.get_session_with_retry()
+	if not session:
+		raise RuntimeError("Database session unavailable")
+	try:
+		yield session
+	finally:
+		session.close()
 
 # Backwards compatibility - these will use the robust manager
+
 def get_engine():
-    """Get database engine with automatic initialization"""
-    ensure_database_initialized()
-    return db_manager.engine
+	"""Get database engine with automatic initialization"""
+	ensure_database_initialized()
+	return db_manager.engine
+
 
 def get_session_local():
-    """Get session factory with automatic initialization"""
-    ensure_database_initialized()
-    return db_manager.SessionLocal
+	"""Get session factory with automatic initialization"""
+	ensure_database_initialized()
+	return db_manager.SessionLocal
 
 # Legacy support - create engine and session for existing code
 # Note: Removed automatic initialization to prevent startup crashes
@@ -42,5 +57,4 @@ def get_session_local():
 sync_engine = None
 SessionLocal = None
 
-# Export the robust get_db function
 __all__ = ['get_db', 'Base', 'sync_engine', 'SessionLocal', 'retry_on_database_error']
