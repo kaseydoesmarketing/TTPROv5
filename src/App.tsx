@@ -5,6 +5,7 @@ import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { useState, useEffect } from 'react';
 import './App.css';
+import { API_BASE_URL } from '@/lib/env';
 
 function AppContent() {
   const { user, loading, login } = useAuthContext();
@@ -15,7 +16,7 @@ function AppContent() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/healthz`, { credentials: 'include' });
+        const response = await fetch(`${API_BASE_URL}/healthz`, { credentials: 'include' });
         setApiHealthy(response.ok);
       } catch (error) {
         console.error('API health check failed:', error);

@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Plus, Youtube, Trash2 } from 'lucide-react';
 import { ConnectYouTubeButton } from '@/components/youtube/ConnectYouTubeButton';
+import { API_BASE_URL } from '@/lib/env';
 
 export function ChannelsPage() {
   const [channels, setChannels] = useState<any[]>([]);
@@ -28,11 +29,7 @@ export function ChannelsPage() {
   };
 
   const handleConnectChannel = () => {
-    const base = import.meta.env.VITE_API_BASE_URL;
-    if (!base) {
-      throw new Error('[env] VITE_API_BASE_URL is missing. Set it to your v5 API, e.g. https://ttprov5.onrender.com');
-    }
-    window.location.href = `${base}/auth/oauth/initiate`;
+    window.location.href = `${API_BASE_URL}/auth/oauth/initiate`;
   };
 
   if (loading) {

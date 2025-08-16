@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
+import { API_BASE_URL } from '@/lib/env'
 
 interface User {
   id: string
@@ -60,7 +61,7 @@ export function Auth0ContextProvider({ children }: Auth0ContextProviderProps) {
           throw new Error('No ID token available')
         }
 
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${idToken}`,
@@ -122,7 +123,7 @@ export function Auth0ContextProvider({ children }: Auth0ContextProviderProps) {
   const logout = useCallback(async () => {
     // Call backend logout endpoint to clear session
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       })

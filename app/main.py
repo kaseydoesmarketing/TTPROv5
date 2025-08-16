@@ -25,6 +25,7 @@ from jwt import PyJWKClient
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from .auth.auth0_verify import verify_auth0_id_token
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,6 +37,9 @@ app = FastAPI(
 	description="A SaaS platform for A/B testing YouTube titles - Render Deployment",
 	version="1.0.7"
 )
+
+# Ensure proxy headers are honored so redirects keep HTTPS scheme on Render
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # CRITICAL: Health check endpoint MUST be defined before ANY middleware
 # This ensures Render can always reach it during deployment
